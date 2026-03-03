@@ -28,6 +28,68 @@ class _PortfolioPageState extends State<PortfolioPage> {
     });
   }
 
+  void _showTopUpDialog(BuildContext context) {
+    final TextEditingController amountController = TextEditingController();
+    showDialog(
+      context: context,
+      builder: (context) {
+        return AlertDialog(
+          title: const Text('Deposit Funds'),
+          content: TextField(
+            controller: amountController,
+            keyboardType: TextInputType.number,
+            decoration: const InputDecoration(labelText: 'Amount (฿)', border: OutlineInputBorder()),
+          ),
+          actions: [
+            TextButton(onPressed: () => Navigator.pop(context), child: const Text('Cancel')),
+            ElevatedButton(
+              onPressed: () async {
+                final amount = double.tryParse(amountController.text) ?? 0;
+                if (amount > 0) {
+                  await _service.addFunds(amount);
+                  if (mounted) Navigator.pop(context);
+                }
+              },
+              child: const Text('Confirm'),
+            ),
+          ],
+        );
+      }
+    );
+  }
+
+  void _showWithdrawDialog(BuildContext context, double maxBalance) {
+    final TextEditingController amountController = TextEditingController();
+    showDialog(
+      context: context,
+      builder: (context) {
+        return AlertDialog(
+          title: const Text('Withdraw Funds'),
+          content: TextField(
+            controller: amountController,
+            keyboardType: TextInputType.number,
+            decoration: InputDecoration(labelText: 'Amount (Max: ฿${maxBalance.toStringAsFixed(0)})', border: const OutlineInputBorder()),
+          ),
+          actions: [
+            TextButton(onPressed: () => Navigator.pop(context), child: const Text('Cancel')),
+            ElevatedButton(
+              onPressed: () async {
+                final amount = double.tryParse(amountController.text) ?? 0;
+                if (amount > 0 && amount <= maxBalance) {
+                  await _service.withdrawFunds(amount);
+                  if (mounted) Navigator.pop(context);
+                } else if (amount > maxBalance) {
+                  ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Insufficient funds')));
+                }
+              },
+              child: const Text('Confirm'),
+            ),
+          ],
+        );
+      }
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -79,40 +141,91 @@ class _PortfolioPageState extends State<PortfolioPage> {
               final totalWeight = assets.fold(0.0, (sum, item) => sum + item.weight);
               final totalValue = totalWeight * (_currentRate?.buyPrice ?? 0);
 
-              return SingleChildScrollView(
-                padding: const EdgeInsets.all(16),
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.stretch,
-                  children: [
-                    // Summary Card
-                    Container(
-                      padding: const EdgeInsets.all(24),
-                      decoration: BoxDecoration(
-                        gradient: const LinearGradient(
-                          colors: [Color(0xFF800000), Color(0xFFA00000)],
-                          begin: Alignment.topLeft,
-                          end: Alignment.bottomRight,
+              return StreamBuilder<double>(
+                stream: _service.getWalletBalanceStream(),
+                builder: (context, walletSnapshot) {
+                  final walletBalance = walletSnapshot.data ?? 0.0;
+
+                  return SingleChildScrollView(
+                    padding: const EdgeInsets.all(16),
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.stretch,
+                      children: [
+                        // Wallet Card
+                        Container(
+                          padding: const EdgeInsets.all(24),
+                          decoration: BoxDecoration(
+                            gradient: const LinearGradient(
+                              colors: [Color(0xFF2E7D32), Color(0xFF4CAF50)],
+                              begin: Alignment.topLeft,
+                              end: Alignment.bottomRight,
+                            ),
+                            borderRadius: BorderRadius.circular(20),
+                            boxShadow: [
+                              BoxShadow(color: Colors.black.withOpacity(0.2), blurRadius: 10, offset: const Offset(0, 5))
+                            ],
+                          ),
+                          child: Column(
+                            children: [
+                              const Text('My Wallet Balance', style: TextStyle(color: Colors.white70, fontSize: 16)),
+                              const SizedBox(height: 8),
+                              Text('฿ ${walletBalance.toStringAsFixed(0)}', 
+                                style: const TextStyle(color: Colors.white, fontSize: 36, fontWeight: FontWeight.bold)),
+                              const SizedBox(height: 16),
+                              Row(
+                                mainAxisAlignment: MainAxisAlignment.center,
+                                children: [
+                                  ElevatedButton.icon(
+                                    onPressed: () => _showTopUpDialog(context),
+                                    icon: const Icon(Icons.add, size: 18),
+                                    label: const Text('Deposit'),
+                                    style: ElevatedButton.styleFrom(
+                                        backgroundColor: Colors.white, foregroundColor: Colors.green),
+                                  ),
+                                  const SizedBox(width: 16),
+                                  OutlinedButton.icon(
+                                    onPressed: () => _showWithdrawDialog(context, walletBalance),
+                                    icon: const Icon(Icons.remove, size: 18),
+                                    label: const Text('Withdraw'),
+                                    style: OutlinedButton.styleFrom(
+                                        foregroundColor: Colors.white, side: const BorderSide(color: Colors.white)),
+                                  ),
+                                ],
+                              )
+                            ],
+                          ),
                         ),
-                        borderRadius: BorderRadius.circular(20),
-                        boxShadow: [
-                          BoxShadow(color: Colors.black.withOpacity(0.2), blurRadius: 10, offset: const Offset(0, 5))
-                        ],
-                      ),
-                      child: Column(
-                        children: [
-                          const Text('Total Accumulated Weight', style: TextStyle(color: Colors.white70, fontSize: 16)),
-                          const SizedBox(height: 8),
-                          Text('${totalWeight.toStringAsFixed(2)} Baht', 
-                            style: const TextStyle(color: Colors.white, fontSize: 36, fontWeight: FontWeight.bold)),
-                          const Divider(color: Colors.white24, height: 32),
-                          const Text('Estimated Value', style: TextStyle(color: Colors.white70, fontSize: 16)),
-                          const SizedBox(height: 8),
-                          Text('฿ ${totalValue.toInt()}', 
-                            style: const TextStyle(color: Color(0xFFFFD700), fontSize: 28, fontWeight: FontWeight.bold)),
-                        ],
-                      ),
-                    ),
-                    const SizedBox(height: 32),
+                        const SizedBox(height: 24),
+                        
+                        // Summary Card
+                        Container(
+                          padding: const EdgeInsets.all(24),
+                          decoration: BoxDecoration(
+                            gradient: const LinearGradient(
+                              colors: [Color(0xFF800000), Color(0xFFA00000)],
+                              begin: Alignment.topLeft,
+                              end: Alignment.bottomRight,
+                            ),
+                            borderRadius: BorderRadius.circular(20),
+                            boxShadow: [
+                              BoxShadow(color: Colors.black.withOpacity(0.2), blurRadius: 10, offset: const Offset(0, 5))
+                            ],
+                          ),
+                          child: Column(
+                            children: [
+                              const Text('Total Accumulated Weight', style: TextStyle(color: Colors.white70, fontSize: 16)),
+                              const SizedBox(height: 8),
+                              Text('${totalWeight.toStringAsFixed(2)} Baht', 
+                                style: const TextStyle(color: Colors.white, fontSize: 36, fontWeight: FontWeight.bold)),
+                              const Divider(color: Colors.white24, height: 32),
+                              const Text('Estimated Value', style: TextStyle(color: Colors.white70, fontSize: 16)),
+                              const SizedBox(height: 8),
+                              Text('฿ ${totalValue.toInt()}', 
+                                style: const TextStyle(color: Color(0xFFFFD700), fontSize: 28, fontWeight: FontWeight.bold)),
+                            ],
+                          ),
+                        ),
+                        const SizedBox(height: 32),
                     
                     // Asset List
                     _SectionHeader(title: 'My Assets (${assets.length})'),
@@ -183,8 +296,10 @@ class _PortfolioPageState extends State<PortfolioPage> {
             }
           );
         }
-      ),
-    );
+      );
+    }
+  ),
+);
   }
 }
 
@@ -220,18 +335,28 @@ class _AssetCardState extends State<_AssetCard> {
           builder: (context, setStateDialog) {
              return AlertDialog(
               title: const Text('Confirm Sale'),
-              content: Column(
-                mainAxisSize: MainAxisSize.min,
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text('Asset: ${widget.asset.name}'),
-                  Text('Weight: ${widget.asset.weight} Baht'),
-                  const SizedBox(height: 12),
-                  const Text('Estimated Value:', style: TextStyle(fontWeight: FontWeight.bold)),
-                  Text('฿ ${estimatedValue.toStringAsFixed(0)}', style: const TextStyle(color: Colors.green, fontSize: 20, fontWeight: FontWeight.bold)),
-                  const SizedBox(height: 12),
-                  const Text('Are you sure you want to sell this asset? This action cannot be undone.', style: TextStyle(fontSize: 12, color: Colors.grey)),
-                ],
+              content: StreamBuilder<double>(
+                stream: _service.getWalletBalanceStream(),
+                builder: (context, snapshot) {
+                  final walletBalance = snapshot.data ?? 0.0;
+                  final newBalance = walletBalance + estimatedValue;
+                  return Column(
+                    mainAxisSize: MainAxisSize.min,
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text('Asset: ${widget.asset.name}'),
+                      Text('Weight: ${widget.asset.weight} Baht'),
+                      const SizedBox(height: 12),
+                      const Text('Estimated Value:', style: TextStyle(fontWeight: FontWeight.bold)),
+                      Text('+ ฿ ${estimatedValue.toStringAsFixed(0)}', style: const TextStyle(color: Colors.green, fontSize: 18, fontWeight: FontWeight.bold)),
+                      const SizedBox(height: 12),
+                      const Text('Estimated New Balance:', style: TextStyle(fontWeight: FontWeight.bold)),
+                      Text('฿ ${newBalance.toStringAsFixed(0)}', style: const TextStyle(color: Colors.blue, fontSize: 18, fontWeight: FontWeight.bold)),
+                      const SizedBox(height: 16),
+                      const Text('Are you sure you want to sell this asset? This action cannot be undone.', style: TextStyle(fontSize: 12, color: Colors.grey)),
+                    ],
+                  );
+                }
               ),
               actions: [
                 TextButton(

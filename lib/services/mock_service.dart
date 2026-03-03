@@ -103,6 +103,47 @@ class MockService {
   }
 
   // Cloud Assets & Transactions Streams
+  Stream<double> getWalletBalanceStream() {
+    final uid = currentUserId;
+    if (uid == null) return Stream.value(0.0);
+
+    return FirebaseFirestore.instance
+        .collection('users')
+        .doc(uid)
+        .snapshots()
+        .map((snapshot) {
+      if (!snapshot.exists || snapshot.data() == null) return 0.0;
+      return (snapshot.data()!['walletBalance'] ?? 0.0 as num).toDouble();
+    });
+  }
+
+  Future<void> addFunds(double amount) async {
+    final uid = currentUserId;
+    if (uid == null) throw Exception('User not logged in');
+    
+    await FirebaseFirestore.instance.collection('users').doc(uid).set({
+      'walletBalance': FieldValue.increment(amount)
+    }, SetOptions(merge: true));
+  }
+
+  Future<void> withdrawFunds(double amount) async {
+    final uid = currentUserId;
+    if (uid == null) throw Exception('User not logged in');
+    
+    // We ideally should check the balance transactionally, 
+    // but for this mock service a simple read then write is okay or just rely on UI validation.
+    final doc = await FirebaseFirestore.instance.collection('users').doc(uid).get();
+    final currentBalance = (doc.data()?['walletBalance'] ?? 0.0 as num).toDouble();
+    
+    if (currentBalance < amount) {
+      throw Exception('Insufficient funds to withdraw');
+    }
+
+    await FirebaseFirestore.instance.collection('users').doc(uid).set({
+      'walletBalance': FieldValue.increment(-amount)
+    }, SetOptions(merge: true));
+  }
+
   Stream<List<GoldAsset>> getMemberAssetsStream() {
     final uid = currentUserId;
     if (uid == null) return Stream.value([]);
@@ -170,9 +211,25 @@ class MockService {
     // Simulate network delay
     await Future.delayed(const Duration(seconds: 1));
 
+    final uid = currentUserId;
+    if (uid == null) throw Exception('User not logged in');
+
     final id = DateTime.now().millisecondsSinceEpoch.toString();
-    
+
     if (type == TransactionType.buy) {
+      // Check Wallet Balance First
+      final userDoc = await FirebaseFirestore.instance.collection('users').doc(uid).get();
+      final currentBalance = (userDoc.data()?['walletBalance'] ?? 0.0 as num).toDouble();
+      
+      if (currentBalance < amount) {
+        throw Exception('Insufficient funds. Please deposit money into your wallet.');
+      }
+
+      // Deduct from wallet
+      await FirebaseFirestore.instance.collection('users').doc(uid).set({
+        'walletBalance': FieldValue.increment(-amount)
+      }, SetOptions(merge: true));
+
       // Real Database Write: Deduct Stock
       if (productId != null) {
         try {
@@ -195,15 +252,12 @@ class MockService {
       };
       
       // Write to Cloud Portfolio
-      final uid = currentUserId;
-      if (uid != null) {
-        await FirebaseFirestore.instance
-            .collection('users')
-            .doc(uid)
-            .collection('assets')
-            .doc('a$id')
-            .set(assetDoc);
-      }
+      await FirebaseFirestore.instance
+          .collection('users')
+          .doc(uid)
+          .collection('assets')
+          .doc('a$id')
+          .set(assetDoc);
     }
 
     final transactionDoc = {
@@ -216,25 +270,22 @@ class MockService {
     };
     
     // Write to Cloud Transaction History
-    final uid = currentUserId;
-    if (uid != null) {
-      await FirebaseFirestore.instance
-          .collection('users')
-          .doc(uid)
-          .collection('transactions')
-          .doc('t$id')
-          .set(transactionDoc);
-          
-      // Write to global transactions collection for store admin visibility
-      final globalTxDoc = Map<String, dynamic>.from(transactionDoc);
-      globalTxDoc['userId'] = uid;
-      globalTxDoc['userEmail'] = FirebaseAuth.instance.currentUser?.email ?? 'Unknown Email';
-      
-      await FirebaseFirestore.instance
-          .collection('transactions')
-          .doc('t$id')
-          .set(globalTxDoc);
-    }
+    await FirebaseFirestore.instance
+        .collection('users')
+        .doc(uid)
+        .collection('transactions')
+        .doc('t$id')
+        .set(transactionDoc);
+        
+    // Write to global transactions collection for store admin visibility
+    final globalTxDoc = Map<String, dynamic>.from(transactionDoc);
+    globalTxDoc['userId'] = uid;
+    globalTxDoc['userEmail'] = FirebaseAuth.instance.currentUser?.email ?? 'Unknown Email';
+    
+    await FirebaseFirestore.instance
+        .collection('transactions')
+        .doc('t$id')
+        .set(globalTxDoc);
   }
 
   Future<void> sellAsset({
@@ -254,6 +305,11 @@ class MockService {
         .collection('assets')
         .doc(asset.id)
         .delete();
+
+    // 1.5 Add funds to wallet
+    await FirebaseFirestore.instance.collection('users').doc(uid).set({
+      'walletBalance': FieldValue.increment(sellPrice)
+    }, SetOptions(merge: true));
 
     // 2. Create the Sell Transaction record
     final id = DateTime.now().millisecondsSinceEpoch.toString();

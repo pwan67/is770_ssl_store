@@ -132,11 +132,35 @@ class _BuyTabState extends State<_BuyTab> {
     
     double total = _weight * widget.currentRate!.sellPrice;
 
-    return SingleChildScrollView(
-      padding: const EdgeInsets.all(24),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.stretch,
-        children: [
+    return StreamBuilder<double>(
+      stream: widget.service.getWalletBalanceStream(),
+      builder: (context, snapshot) {
+        final balance = snapshot.data ?? 0.0;
+        final hasEnoughFunds = balance >= total;
+
+        return SingleChildScrollView(
+          padding: const EdgeInsets.all(24),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            children: [
+              // Wallet Balance Header
+              Container(
+                padding: const EdgeInsets.all(12),
+                margin: const EdgeInsets.only(bottom: 24),
+                decoration: BoxDecoration(
+                  color: const Color(0xFFFFF8E1),
+                  borderRadius: BorderRadius.circular(12),
+                  border: Border.all(color: const Color(0xFFFFD700)),
+                ),
+                child: Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                  children: [
+                    const Text('Wallet Balance:', style: TextStyle(fontWeight: FontWeight.bold)),
+                    Text('฿ ${balance.toStringAsFixed(0)}', style: const TextStyle(fontWeight: FontWeight.bold, color: Colors.green, fontSize: 16)),
+                  ],
+                ),
+              ),
+
           const Text('Select Weight (Baht)', style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
           Slider(
             value: _weight,
@@ -166,27 +190,49 @@ class _BuyTabState extends State<_BuyTab> {
                 _rowItem('Gold Price', '฿ ${widget.currentRate!.sellPrice.toStringAsFixed(0)} / Baht'),
                 const Divider(),
                 _rowItem('Total Amount', '฿ ${total.toStringAsFixed(0)}', isBold: true),
+                if (hasEnoughFunds)
+                  _rowItem('Estimated Remaining Balance', '฿ ${(balance - total).toStringAsFixed(0)}', isBold: true),
               ],
             ),
           ),
           const SizedBox(height: 48),
+          if (!hasEnoughFunds)
+            const Padding(
+              padding: EdgeInsets.only(bottom: 16.0),
+              child: Text(
+                'Insufficient funds. Please deposit money in My Gold tab.',
+                style: TextStyle(color: Colors.red, fontWeight: FontWeight.bold, fontSize: 14),
+                textAlign: TextAlign.center,
+              ),
+            ),
           ElevatedButton(
-            onPressed: _isProcessing ? null : () async {
+            onPressed: (_isProcessing || !hasEnoughFunds) ? null : () async {
               setState(() => _isProcessing = true);
-              await widget.service.createTransaction(
-                assetName: 'Gold Bar (New)',
-                weight: _weight,
-                amount: total,
-                type: TransactionType.buy,
-                category: 'Bar',
-              );
-              if (mounted) {
-                ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Purchase Successful!')));
-                setState(() => _isProcessing = false);
+              try {
+                await widget.service.createTransaction(
+                  assetName: 'Gold Bar (New)',
+                  weight: _weight,
+                  amount: total,
+                  type: TransactionType.buy,
+                  category: 'Bar',
+                );
+                if (mounted) {
+                  ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Purchase Successful!')));
+                }
+              } catch (e) {
+                if (mounted) {
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    SnackBar(content: Text(e.toString().replaceAll('Exception: ', ''))),
+                  );
+                }
+              } finally {
+                if (mounted) {
+                  setState(() => _isProcessing = false);
+                }
               }
             },
             style: ElevatedButton.styleFrom(
-              backgroundColor: const Color(0xFF800000),
+              backgroundColor: hasEnoughFunds ? const Color(0xFF800000) : Colors.grey,
               foregroundColor: Colors.white,
               padding: const EdgeInsets.symmetric(vertical: 18),
               shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
@@ -197,6 +243,8 @@ class _BuyTabState extends State<_BuyTab> {
           ),
         ],
       ),
+    );
+      },
     );
   }
 
@@ -236,18 +284,28 @@ class _SellTabState extends State<_SellTab> {
           builder: (context, setStateDialog) {
              return AlertDialog(
               title: const Text('Confirm Sale'),
-              content: Column(
-                mainAxisSize: MainAxisSize.min,
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text('Asset: ${asset.name}'),
-                  Text('Weight: ${asset.weight} Baht'),
-                  const SizedBox(height: 12),
-                  const Text('Estimated Value:', style: TextStyle(fontWeight: FontWeight.bold)),
-                  Text('฿ ${estimatedValue.toStringAsFixed(0)}', style: const TextStyle(color: Colors.green, fontSize: 20, fontWeight: FontWeight.bold)),
-                  const SizedBox(height: 12),
-                  const Text('Are you sure you want to sell this asset? This action cannot be undone.', style: TextStyle(fontSize: 12, color: Colors.grey)),
-                ],
+              content: StreamBuilder<double>(
+                stream: widget.service.getWalletBalanceStream(),
+                builder: (context, snapshot) {
+                  final walletBalance = snapshot.data ?? 0.0;
+                  final newBalance = walletBalance + estimatedValue;
+                  return Column(
+                    mainAxisSize: MainAxisSize.min,
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text('Asset: ${asset.name}'),
+                      Text('Weight: ${asset.weight} Baht'),
+                      const SizedBox(height: 12),
+                      const Text('Estimated Value:', style: TextStyle(fontWeight: FontWeight.bold)),
+                      Text('+ ฿ ${estimatedValue.toStringAsFixed(0)}', style: const TextStyle(color: Colors.green, fontSize: 18, fontWeight: FontWeight.bold)),
+                      const SizedBox(height: 12),
+                      const Text('Estimated New Balance:', style: TextStyle(fontWeight: FontWeight.bold)),
+                      Text('฿ ${newBalance.toStringAsFixed(0)}', style: const TextStyle(color: Colors.blue, fontSize: 18, fontWeight: FontWeight.bold)),
+                      const SizedBox(height: 16),
+                      const Text('Are you sure you want to sell this asset? This action cannot be undone.', style: TextStyle(fontSize: 12, color: Colors.grey)),
+                    ],
+                  );
+                }
               ),
               actions: [
                 TextButton(

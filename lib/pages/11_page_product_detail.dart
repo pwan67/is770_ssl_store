@@ -28,17 +28,23 @@ class _ProductDetailPageState extends State<ProductDetailPage> {
       builder: (ctx) {
         return StatefulBuilder(
           builder: (BuildContext context, StateSetter setModalState) {
-            return Padding(
-              padding: EdgeInsets.only(
-                bottom: MediaQuery.of(context).viewInsets.bottom,
-                left: 24,
-                right: 24,
-                top: 24,
-              ),
-              child: Column(
-                mainAxisSize: MainAxisSize.min,
-                crossAxisAlignment: CrossAxisAlignment.stretch,
-                children: [
+            return StreamBuilder<double>(
+              stream: _service.getWalletBalanceStream(),
+              builder: (context, snapshot) {
+                final balance = snapshot.data ?? 0.0;
+                final hasEnoughFunds = balance >= totalPrice;
+
+                return Padding(
+                  padding: EdgeInsets.only(
+                    bottom: MediaQuery.of(context).viewInsets.bottom,
+                    left: 24,
+                    right: 24,
+                    top: 24,
+                  ),
+                  child: Column(
+                    mainAxisSize: MainAxisSize.min,
+                    crossAxisAlignment: CrossAxisAlignment.stretch,
+                    children: [
                   const Text('Order Summary', style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold)),
                   const SizedBox(height: 16),
                   _summaryRow('Item', widget.product.name),
@@ -47,33 +53,55 @@ class _ProductDetailPageState extends State<ProductDetailPage> {
                   _summaryRow('Labor Fee', '฿ ${widget.product.laborFee.toStringAsFixed(0)}'),
                   const Divider(height: 32),
                   _summaryRow('Total Cost', '฿ ${totalPrice.toStringAsFixed(0)}', isBold: true),
+                  if (hasEnoughFunds)
+                    _summaryRow('Estimated Remaining Balance', '฿ ${(balance - totalPrice).toStringAsFixed(0)}', isBold: true),
                   const SizedBox(height: 32),
+                  if (!hasEnoughFunds)
+                    const Padding(
+                      padding: EdgeInsets.only(bottom: 16.0),
+                      child: Text(
+                        'Insufficient funds. Please check your wallet balance.',
+                        style: TextStyle(color: Colors.red, fontWeight: FontWeight.bold),
+                        textAlign: TextAlign.center,
+                      ),
+                    ),
                   ElevatedButton(
-                    onPressed: _isProcessing 
+                    onPressed: (_isProcessing || !hasEnoughFunds) 
                       ? null 
                       : () async {
                           setModalState(() => _isProcessing = true);
-                          await _service.createTransaction(
-                            assetName: widget.product.name,
-                            weight: widget.product.weight,
-                            amount: totalPrice,
-                            type: TransactionType.buy,
-                            category: widget.product.category,
-                            productId: widget.product.id,
-                          );
-                          
-                          if (mounted) {
-                            setModalState(() => _isProcessing = false);
-                            Navigator.pop(context); // Close bottom sheet
-                            ScaffoldMessenger.of(context).showSnackBar(
-                              const SnackBar(content: Text('Purchase Successful! Added to Portfolio.')),
+                          try {
+                            await _service.createTransaction(
+                              assetName: widget.product.name,
+                              weight: widget.product.weight,
+                              amount: totalPrice,
+                              type: TransactionType.buy,
+                              category: widget.product.category,
+                              productId: widget.product.id,
                             );
-                            Navigator.pop(context); // Go back to catalog
+                            
+                            if (mounted) {
+                              Navigator.pop(context); // Close bottom sheet
+                              ScaffoldMessenger.of(context).showSnackBar(
+                                const SnackBar(content: Text('Purchase Successful! Added to Portfolio.')),
+                              );
+                              Navigator.pop(context); // Go back to catalog
+                            }
+                          } catch (e) {
+                            if (mounted) {
+                              ScaffoldMessenger.of(context).showSnackBar(
+                                SnackBar(content: Text(e.toString().replaceAll('Exception: ', ''))),
+                              );
+                            }
+                          } finally {
+                            if (mounted) {
+                              setModalState(() => _isProcessing = false);
+                            }
                           }
                         },
                     style: ElevatedButton.styleFrom(
                       padding: const EdgeInsets.symmetric(vertical: 16),
-                      backgroundColor: const Color(0xFF800000),
+                      backgroundColor: hasEnoughFunds ? const Color(0xFF800000) : Colors.grey,
                       foregroundColor: Colors.white,
                       shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
                     ),
@@ -84,6 +112,8 @@ class _ProductDetailPageState extends State<ProductDetailPage> {
                   const SizedBox(height: 32),
                 ],
               ),
+            );
+              }
             );
           }
         );
