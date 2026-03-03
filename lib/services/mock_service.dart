@@ -6,6 +6,7 @@ import '../models/news_item.dart';
 import '../models/gold_asset.dart';
 import '../models/gold_transaction.dart';
 import '../models/appointment.dart';
+import '../models/notification_item.dart';
 
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:firebase_storage/firebase_storage.dart';
@@ -257,6 +258,90 @@ class MockService {
       }
       return totalSpend ~/ 1000;
     });
+  }
+
+  Future<void> _generateInitialNotifications(String uid) async {
+    final batch = FirebaseFirestore.instance.batch();
+    final notifs = [
+      NotificationItem(
+        id: 'n1',
+        title: 'Pawn Expiring Soon',
+        message: 'Your pawn asset "Gold Chain 1 Baht" expires in 3 days.',
+        type: 'pawn',
+        timestamp: DateTime.now().subtract(const Duration(minutes: 5)),
+        isRead: false,
+      ),
+      NotificationItem(
+        id: 'n2',
+        title: 'Item in Cart',
+        message: 'You left a 1 Baht Gold Bar in your cart!',
+        type: 'cart',
+        timestamp: DateTime.now().subtract(const Duration(hours: 2)),
+        isRead: false,
+      ),
+      NotificationItem(
+        id: 'n3',
+        title: 'Emergency Store Update',
+        message: 'Notice: Store closed today due to heavy flooding.',
+        type: 'store',
+        timestamp: DateTime.now().subtract(const Duration(days: 1)),
+        isRead: false,
+      ),
+       NotificationItem(
+        id: 'n4',
+        title: 'Upcoming Appointment',
+        message: 'Reminder: You have a pickup appointment tomorrow at 10:30.',
+        type: 'appointment',
+        timestamp: DateTime.now().subtract(const Duration(days: 2)),
+        isRead: true,
+      ),
+      NotificationItem(
+        id: 'n5',
+        title: 'Price Alert',
+        message: 'Gold price has dropped to your target of ฿40,000.',
+        type: 'price',
+        timestamp: DateTime.now().subtract(const Duration(days: 4)),
+        isRead: true,
+      ),
+    ];
+    
+    for (var n in notifs) {
+      final docRef = FirebaseFirestore.instance.collection('users').doc(uid).collection('notifications').doc(n.id);
+      batch.set(docRef, n.toMap());
+    }
+    await batch.commit();
+  }
+
+  Stream<List<NotificationItem>> getNotificationsStream() {
+    final uid = currentUserId;
+    if (uid == null) return Stream.value([]);
+
+    final collection = FirebaseFirestore.instance.collection('users').doc(uid).collection('notifications');
+    
+    // Auto-generate if empty
+    collection.limit(1).get().then((snapshot) {
+      if (snapshot.docs.isEmpty) {
+        _generateInitialNotifications(uid);
+      }
+    });
+
+    return collection
+        .orderBy('timestamp', descending: true)
+        .snapshots()
+        .map((snapshot) {
+      return snapshot.docs.map((doc) => NotificationItem.fromMap(doc.id, doc.data())).toList();
+    });
+  }
+  
+  Future<void> markNotificationAsRead(String notificationId) async {
+    final uid = currentUserId;
+    if (uid == null) return;
+    await FirebaseFirestore.instance
+        .collection('users')
+        .doc(uid)
+        .collection('notifications')
+        .doc(notificationId)
+        .update({'isRead': true});
   }
 
   Future<void> createTransaction({

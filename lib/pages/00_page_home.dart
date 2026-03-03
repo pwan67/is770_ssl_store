@@ -9,6 +9,8 @@ import '10_page_catalog.dart';
 import '12_page_profile.dart';
 import '13_page_inquiry.dart';
 import '02_page_trading.dart';
+import '16_page_notifications.dart';
+import '../models/notification_item.dart';
 
 class HomePage extends StatefulWidget {
   // Make the page is interactive
@@ -66,6 +68,55 @@ class _HomePageState extends State<HomePage> {
       appBar: AppBar(
         title: const Text('Sung Seng Lee Gold'),
         centerTitle: true,
+        actions: [
+          StreamBuilder<List<NotificationItem>>(
+            stream: _service.getNotificationsStream(),
+            builder: (context, snapshot) {
+              int unreadCount = 0;
+              if (snapshot.hasData) {
+                unreadCount = snapshot.data!.where((n) => !n.isRead).length;
+              }
+              return IconButton(
+                icon: Stack(
+                  clipBehavior: Clip.none,
+                  children: [
+                    const Icon(Icons.notifications_outlined),
+                    if (unreadCount > 0)
+                      Positioned(
+                        right: -4,
+                        top: -4,
+                        child: Container(
+                          padding: const EdgeInsets.all(2),
+                          decoration: BoxDecoration(
+                            color: Colors.red,
+                            borderRadius: BorderRadius.circular(10),
+                            border: Border.all(color: const Color(0xFF800000), width: 1.5),
+                          ),
+                          constraints: const BoxConstraints(
+                            minWidth: 16,
+                            minHeight: 16,
+                          ),
+                          child: Text(
+                            unreadCount > 99 ? '99+' : unreadCount.toString(),
+                            style: const TextStyle(
+                              color: Colors.white,
+                              fontSize: 10,
+                              fontWeight: FontWeight.bold,
+                            ),
+                            textAlign: TextAlign.center,
+                          ),
+                        ),
+                      ),
+                  ],
+                ),
+                onPressed: () {
+                  Navigator.push(context, MaterialPageRoute(builder: (_) => const NotificationsPage()));
+                },
+              );
+            },
+          ),
+          const SizedBox(width: 8),
+        ],
       ),
       body: SingleChildScrollView(
         // Changed to ScrollView to fit banner
