@@ -17,7 +17,16 @@ class _AppointmentPageState extends State<AppointmentPage> {
   GoldAsset? _passedAsset;
   DateTime? _selectedDate;
   TimeOfDay? _selectedTime;
+  List<Appointment> _dailyBookings = [];
+  bool _isLoadingSlots = false;
   bool _isProcessing = false;
+
+  // Generate 30-min slots from 09:00 to 16:30
+  final List<TimeOfDay> _allSlots = List.generate(16, (index) {
+    int hour = 9 + (index ~/ 2);
+    int minute = (index % 2) * 30;
+    return TimeOfDay(hour: hour, minute: minute);
+  });
 
   @override
   void didChangeDependencies() {
@@ -35,33 +44,34 @@ class _AppointmentPageState extends State<AppointmentPage> {
       initialDate: now.add(const Duration(days: 1)),
       firstDate: now,
       lastDate: now.add(const Duration(days: 90)),
+      selectableDayPredicate: (DateTime val) => val.weekday != DateTime.sunday,
     );
     if (picked != null) {
       setState(() {
         _selectedDate = picked;
+        _selectedTime = null; // Reset time when date changes
+        _isLoadingSlots = true;
       });
+      
+      try {
+        final bookings = await _service.getAppointmentsForDate(picked);
+        if (mounted && _selectedDate == picked) {
+          setState(() {
+            _dailyBookings = bookings;
+            _isLoadingSlots = false;
+          });
+        }
+      } catch (e) {
+        if (mounted) setState(() => _isLoadingSlots = false);
+      }
     }
   }
 
-  Future<void> _pickTime() async {
-    final picked = await showTimePicker(
-      context: context,
-      initialTime: const TimeOfDay(hour: 10, minute: 0),
-    );
-    if (picked != null) {
-      // Validate store hours (e.g., 9 AM to 5 PM)
-      if (picked.hour < 9 || picked.hour >= 17) {
-        if (mounted) {
-          ScaffoldMessenger.of(context).showSnackBar(
-            const SnackBar(content: Text('Please select a time within store hours (09:00 - 17:00)')),
-          );
-        }
-        return;
-      }
-      setState(() {
-        _selectedTime = picked;
-      });
-    }
+  int _getSlotBookings(TimeOfDay slot) {
+    if (_selectedDate == null) return 0;
+    return _dailyBookings.where((apt) {
+      return apt.date.hour == slot.hour && apt.date.minute == slot.minute;
+    }).length;
   }
 
   Future<void> _confirmAppointment() async {
@@ -179,29 +189,76 @@ class _AppointmentPageState extends State<AppointmentPage> {
             ),
           ),
           const SizedBox(height: 24),
-          const Text('Select Date & Time', style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
+          const Text('Select Date', style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
           const SizedBox(height: 12),
-          Row(
-            children: [
-              Expanded(
-                child: OutlinedButton.icon(
-                  onPressed: _pickDate,
-                  icon: const Icon(Icons.calendar_today),
-                  label: Text(_selectedDate == null ? 'Select Date' : DateFormat('dd MMM yyyy').format(_selectedDate!)),
-                  style: OutlinedButton.styleFrom(padding: const EdgeInsets.symmetric(vertical: 16)),
-                ),
-              ),
-              const SizedBox(width: 12),
-              Expanded(
-                child: OutlinedButton.icon(
-                  onPressed: _pickTime,
-                  icon: const Icon(Icons.access_time),
-                  label: Text(_selectedTime == null ? 'Select Time\n(09:00-17:00)' : _selectedTime!.format(context), textAlign: TextAlign.center,),
-                  style: OutlinedButton.styleFrom(padding: const EdgeInsets.symmetric(vertical: 16)),
-                ),
-              ),
-            ],
+          OutlinedButton.icon(
+            onPressed: _pickDate,
+            icon: const Icon(Icons.calendar_today),
+            label: Text(_selectedDate == null ? 'Tap to Pick Date' : DateFormat('EEEE, dd MMM yyyy').format(_selectedDate!)),
+            style: OutlinedButton.styleFrom(padding: const EdgeInsets.symmetric(vertical: 16)),
           ),
+          
+          if (_selectedDate != null) ...[
+            const SizedBox(height: 24),
+            Row(
+              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+              children: [
+                const Text('Select Time Slot', style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
+                if (_isLoadingSlots) const SizedBox(width: 16, height: 16, child: CircularProgressIndicator(strokeWidth: 2)),
+              ],
+            ),
+            const SizedBox(height: 12),
+            if (!_isLoadingSlots)
+              GridView.builder(
+                shrinkWrap: true,
+                physics: const NeverScrollableScrollPhysics(),
+                gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
+                  crossAxisCount: 3,
+                  childAspectRatio: 2.5,
+                  crossAxisSpacing: 8,
+                  mainAxisSpacing: 8,
+                ),
+                itemCount: _allSlots.length,
+                itemBuilder: (context, index) {
+                  final slot = _allSlots[index];
+                  final bookingsCount = _getSlotBookings(slot);
+                  final isFull = bookingsCount >= 2;
+                  final isSelected = _selectedTime == slot;
+                  
+                  return InkWell(
+                    onTap: isFull ? null : () => setState(() => _selectedTime = slot),
+                    borderRadius: BorderRadius.circular(8),
+                    child: Container(
+                      decoration: BoxDecoration(
+                        color: isSelected 
+                           ? const Color(0xFF800000) 
+                           : (isFull ? Colors.grey[200] : Colors.white),
+                        border: Border.all(
+                          color: isSelected ? const Color(0xFF800000) : (isFull ? Colors.grey[300]! : Colors.grey),
+                        ),
+                        borderRadius: BorderRadius.circular(8),
+                      ),
+                      alignment: Alignment.center,
+                      child: Column(
+                        mainAxisAlignment: MainAxisAlignment.center,
+                        children: [
+                          Text(
+                            slot.format(context), 
+                            style: TextStyle(
+                              color: isSelected ? Colors.white : (isFull ? Colors.grey : Colors.black87),
+                              fontWeight: isSelected ? FontWeight.bold : FontWeight.normal,
+                              decoration: isFull ? TextDecoration.lineThrough : null,
+                            )
+                          ),
+                          if (isFull)
+                            const Text('Full', style: TextStyle(fontSize: 10, color: Colors.grey, fontWeight: FontWeight.bold)),
+                        ],
+                      ),
+                    ),
+                  );
+                },
+              ),
+          ],
           const SizedBox(height: 32),
           ElevatedButton(
             onPressed: (_selectedDate != null && _selectedTime != null && !_isProcessing) ? _confirmAppointment : null,

@@ -514,6 +514,20 @@ class MockService {
     });
   }
 
+  Future<List<Appointment>> getAppointmentsForDate(DateTime date) async {
+    final startOfDay = DateTime(date.year, date.month, date.day).toIso8601String();
+    final endOfDay = DateTime(date.year, date.month, date.day, 23, 59, 59).toIso8601String();
+
+    final snapshot = await FirebaseFirestore.instance
+        .collectionGroup('appointments')
+        .where('date', isGreaterThanOrEqualTo: startOfDay)
+        .where('date', isLessThanOrEqualTo: endOfDay)
+        .where('status', isEqualTo: 'scheduled') // only count active ones
+        .get();
+
+    return snapshot.docs.map((doc) => Appointment.fromMap(doc.id, doc.data())).toList();
+  }
+
   Future<void> createAppointment({
     required GoldAsset asset,
     required DateTime appointmentDate,
@@ -522,6 +536,19 @@ class MockService {
     if (uid == null) throw Exception('User not logged in');
 
     await Future.delayed(const Duration(seconds: 1));
+
+    // Capacity Check
+    final isoDateStart = appointmentDate.toIso8601String();
+    // In our 30-min slot logic, exact match on the time is enough
+    final existingParams = await FirebaseFirestore.instance
+        .collectionGroup('appointments')
+        .where('date', isEqualTo: isoDateStart)
+        .where('status', isEqualTo: 'scheduled')
+        .get();
+        
+    if (existingParams.docs.length >= 2) {
+      throw Exception('This time slot has reached maximum capacity.');
+    }
 
     // 1. Create Appointment Document
     final id = DateTime.now().millisecondsSinceEpoch.toString();
