@@ -134,7 +134,7 @@ class TransactionHistoryPage extends StatelessWidget {
             mainAxisAlignment: MainAxisAlignment.center,
             children: [
               Text(
-                '\$amountPrefix\${currencyFormat.format(tx.amount)}',
+                '$amountPrefix${currencyFormat.format(tx.amount)}',
                 style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold, color: amountColor),
               ),
             ],
