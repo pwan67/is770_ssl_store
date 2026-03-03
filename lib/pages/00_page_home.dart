@@ -40,27 +40,34 @@ class _HomePageState extends State<HomePage> {
 
   @override
   Widget build(BuildContext context) {
-    // Menu labels & icons with Thai context
     final menuItems = [
       {
         'title': 'Catalog\nสินค้าทองรูปพรรณ',
         'icon': Icons.grid_view_rounded,
         'page': const CatalogPage(),
+        'color': const Color(0xFFE3F2FD),
+        'iconColor': const Color(0xFF1976D2),
       },
       {
-        'title': 'Buy / Sell\nซื้อ-ขาย',
+        'title': 'Buy / Sell\nซื้อ-ขายแท่ง',
         'icon': Icons.currency_exchange,
-        'page': const TradingPage(),
+        'page': const TradingPage(initialTabIndex: 0),
+        'color': const Color(0xFFE8F5E9),
+        'iconColor': const Color(0xFF388E3C),
       },
       {
-        'title': 'Profile\nข้อมูลสมาชิก',
-        'icon': Icons.account_circle,
-        'page': const ProfilePage(),
+        'title': 'Pawn / Redeem\nจำนำ-ไถ่ถอน',
+        'icon': Icons.account_balance,
+        'page': const TradingPage(initialTabIndex: 2),
+        'color': const Color(0xFFFFF3E0),
+        'iconColor': const Color(0xFFF57C00),
       },
       {
-        'title': 'Inquiry\nสอบถาม/สั่งทำ',
+        'title': 'Inquiry\nสอบถาม/นัดหมาย',
         'icon': Icons.chat_bubble_outline,
         'page': const InquiryPage(),
+        'color': const Color(0xFFF3E5F5),
+        'iconColor': const Color(0xFF7B1FA2),
       },
     ];
 
@@ -208,12 +215,12 @@ class _HomePageState extends State<HomePage> {
                             padding: const EdgeInsets.all(12),
                             decoration: BoxDecoration(
                               shape: BoxShape.circle,
-                              color: const Color(0xFFFFF8E1),
+                              color: item['color'] as Color? ?? const Color(0xFFFFF8E1),
                             ),
                             child: Icon(
                               item['icon'] as IconData,
                               size: 32,
-                              color: const Color(0xFF800000),
+                              color: item['iconColor'] as Color? ?? const Color(0xFF800000),
                             ),
                           ),
                           const SizedBox(height: 12),
