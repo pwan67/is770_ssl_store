@@ -5,7 +5,8 @@ import '../models/appointment.dart';
 import '../services/mock_service.dart';
 
 class AppointmentPage extends StatefulWidget {
-  const AppointmentPage({super.key});
+  final Appointment? editingAppointment;
+  const AppointmentPage({super.key, this.editingAppointment});
 
   @override
   State<AppointmentPage> createState() => _AppointmentPageState();
@@ -15,6 +16,8 @@ class _AppointmentPageState extends State<AppointmentPage> {
   final MockService _service = MockService();
 
   GoldAsset? _passedAsset;
+  Appointment? _editingAppointment;
+  
   DateTime? _selectedDate;
   TimeOfDay? _selectedTime;
   List<Appointment> _dailyBookings = [];
@@ -29,11 +32,39 @@ class _AppointmentPageState extends State<AppointmentPage> {
   });
 
   @override
+  void initState() {
+    super.initState();
+    if (widget.editingAppointment != null) {
+      _editingAppointment = widget.editingAppointment;
+      _selectedDate = _editingAppointment!.date;
+      _selectedTime = TimeOfDay.fromDateTime(_selectedDate!);
+      _fetchSlotsForDate(_selectedDate!);
+    }
+  }
+
+  @override
   void didChangeDependencies() {
     super.didChangeDependencies();
-    final args = ModalRoute.of(context)?.settings.arguments;
-    if (args is GoldAsset) {
-      _passedAsset = args;
+    if (_editingAppointment == null) {
+      final args = ModalRoute.of(context)?.settings.arguments;
+      if (args is GoldAsset) {
+        _passedAsset = args;
+      }
+    }
+  }
+
+  Future<void> _fetchSlotsForDate(DateTime date) async {
+    setState(() => _isLoadingSlots = true);
+    try {
+      final bookings = await _service.getAppointmentsForDate(date);
+      if (mounted && _selectedDate == date) {
+        setState(() {
+          _dailyBookings = bookings;
+          _isLoadingSlots = false;
+        });
+      }
+    } catch (e) {
+      if (mounted) setState(() => _isLoadingSlots = false);
     }
   }
 
@@ -41,7 +72,7 @@ class _AppointmentPageState extends State<AppointmentPage> {
     final now = DateTime.now();
     final picked = await showDatePicker(
       context: context,
-      initialDate: now.add(const Duration(days: 1)),
+      initialDate: _selectedDate ?? now.add(const Duration(days: 1)),
       firstDate: now,
       lastDate: now.add(const Duration(days: 90)),
       selectableDayPredicate: (DateTime val) => val.weekday != DateTime.sunday,
@@ -50,32 +81,22 @@ class _AppointmentPageState extends State<AppointmentPage> {
       setState(() {
         _selectedDate = picked;
         _selectedTime = null; // Reset time when date changes
-        _isLoadingSlots = true;
       });
-      
-      try {
-        final bookings = await _service.getAppointmentsForDate(picked);
-        if (mounted && _selectedDate == picked) {
-          setState(() {
-            _dailyBookings = bookings;
-            _isLoadingSlots = false;
-          });
-        }
-      } catch (e) {
-        if (mounted) setState(() => _isLoadingSlots = false);
-      }
+      _fetchSlotsForDate(picked);
     }
   }
 
   int _getSlotBookings(TimeOfDay slot) {
     if (_selectedDate == null) return 0;
     return _dailyBookings.where((apt) {
+      // If we are editing, do NOT count our own appointment if it hits this exact slot naturally
+      if (_editingAppointment != null && apt.id == _editingAppointment!.id) return false;
       return apt.date.hour == slot.hour && apt.date.minute == slot.minute;
     }).length;
   }
 
   Future<void> _confirmAppointment() async {
-    if (_passedAsset == null || _selectedDate == null || _selectedTime == null) return;
+    if ((_passedAsset == null && _editingAppointment == null) || _selectedDate == null || _selectedTime == null) return;
 
     setState(() => _isProcessing = true);
     
@@ -88,18 +109,25 @@ class _AppointmentPageState extends State<AppointmentPage> {
         _selectedTime!.minute,
       );
 
-      await _service.createAppointment(
-        asset: _passedAsset!,
-        appointmentDate: combinedDateTime,
-      );
-
-      if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Appointment Scheduled Successfully!')));
-        setState(() {
-          _passedAsset = null; // Clear booking form
-          _selectedDate = null;
-          _selectedTime = null;
-        });
+      if (_editingAppointment != null) {
+        await _service.updateAppointment(_editingAppointment!.id, combinedDateTime);
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Appointment Rescheduled Successfully!')));
+          Navigator.pop(context); // Go back if we navigated here purely to edit
+        }
+      } else {
+        await _service.createAppointment(
+          asset: _passedAsset!,
+          appointmentDate: combinedDateTime,
+        );
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Appointment Scheduled Successfully!')));
+          setState(() {
+            _passedAsset = null; // Clear booking form
+            _selectedDate = null;
+            _selectedTime = null;
+          });
+        }
       }
     } catch (e) {
       if (mounted) {
@@ -112,23 +140,112 @@ class _AppointmentPageState extends State<AppointmentPage> {
     }
   }
 
+  void _showAppointmentOptions(Appointment apt) {
+    if (apt.status != 'scheduled' || apt.date.isBefore(DateTime.now())) return;
+
+    showModalBottomSheet(
+      context: context,
+      shape: const RoundedRectangleBorder(borderRadius: BorderRadius.vertical(top: Radius.circular(20))),
+      builder: (context) => Padding(
+        padding: const EdgeInsets.symmetric(vertical: 24.0, horizontal: 16.0),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: [
+            Text('Manage Appointment', style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold), textAlign: TextAlign.center),
+            const SizedBox(height: 8),
+            Text(apt.assetName, style: TextStyle(color: Colors.grey), textAlign: TextAlign.center),
+            const SizedBox(height: 24),
+            ElevatedButton.icon(
+              icon: const Icon(Icons.edit_calendar),
+              label: const Text('Reschedule'),
+              style: ElevatedButton.styleFrom(
+                backgroundColor: const Color(0xFF800000),
+                foregroundColor: Colors.white,
+                padding: const EdgeInsets.symmetric(vertical: 16),
+              ),
+              onPressed: () {
+                Navigator.pop(context);
+                Navigator.push(
+                  context,
+                  MaterialPageRoute(builder: (_) => AppointmentPage(editingAppointment: apt)),
+                );
+              },
+            ),
+            const SizedBox(height: 12),
+            OutlinedButton.icon(
+              icon: const Icon(Icons.cancel, color: Colors.red),
+              label: const Text('Cancel Appointment', style: TextStyle(color: Colors.red)),
+              style: OutlinedButton.styleFrom(
+                side: const BorderSide(color: Colors.red),
+                padding: const EdgeInsets.symmetric(vertical: 16),
+              ),
+              onPressed: () {
+                Navigator.pop(context);
+                _promptCancel(apt);
+              },
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  void _promptCancel(Appointment apt) {
+    showDialog(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: const Text('Cancel Appointment?'),
+        content: const Text('This will release your time slot, and your gold asset will return to your portfolio.'),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context),
+            child: const Text('No, Keep It'),
+          ),
+          ElevatedButton(
+            style: ElevatedButton.styleFrom(backgroundColor: Colors.red),
+            onPressed: () async {
+              Navigator.pop(context); // close dialog
+              try {
+                await _service.cancelAppointment(apt.id, apt.assetId);
+                if (mounted) {
+                  ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Appointment Canceled.')));
+                }
+              } catch (e) {
+                if (mounted) {
+                  ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Error: $e')));
+                }
+              }
+            },
+            child: const Text('Yes, Cancel Now', style: TextStyle(color: Colors.white)),
+          ),
+        ],
+      ),
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
+    // If we passed an editing appointment explicitly, we might not even need tabs, 
+    // but building inside the tab layout keeps the UI consistent.
+    final hasAssetContext = _passedAsset != null || _editingAppointment != null;
+    final isEditing = _editingAppointment != null;
+
     return DefaultTabController(
-      initialIndex: _passedAsset != null ? 0 : 1,
+      initialIndex: hasAssetContext ? 0 : 1,
       length: 2,
       child: Scaffold(
         appBar: AppBar(
           backgroundColor: const Color(0xFF800000),
           foregroundColor: Colors.white,
-          title: const Text('Store Appointments'),
-          bottom: const TabBar(
+          title: Text(isEditing ? 'Reschedule Pickup' : 'Store Appointments'),
+          bottom: TabBar(
             labelColor: Colors.white,
             unselectedLabelColor: Colors.white70,
-            indicatorColor: Color(0xFFFFD700),
+            indicatorColor: const Color(0xFFFFD700),
             tabs: [
-              Tab(text: 'Book Pickup', icon: Icon(Icons.add_shopping_cart)),
-              Tab(text: 'My Schedule', icon: Icon(Icons.calendar_month)),
+              Tab(text: isEditing ? 'Edit Slot' : 'Book Pickup', icon: const Icon(Icons.add_shopping_cart)),
+              const Tab(text: 'My Schedule', icon: Icon(Icons.calendar_month)),
             ],
           ),
         ),
@@ -143,7 +260,7 @@ class _AppointmentPageState extends State<AppointmentPage> {
   }
 
   Widget _buildBookingTab() {
-    if (_passedAsset == null) {
+    if (_passedAsset == null && _editingAppointment == null) {
       return const Center(
         child: Padding(
           padding: EdgeInsets.all(24.0),
@@ -168,6 +285,9 @@ class _AppointmentPageState extends State<AppointmentPage> {
       );
     }
 
+    final assetName = _editingAppointment?.assetName ?? _passedAsset!.name;
+    final isEditing = _editingAppointment != null;
+
     return SingleChildScrollView(
       padding: const EdgeInsets.all(16.0),
       child: Column(
@@ -180,10 +300,10 @@ class _AppointmentPageState extends State<AppointmentPage> {
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  const Text('Asset to Pick Up', style: TextStyle(fontSize: 14, color: Colors.grey)),
+                   Text(isEditing ? 'Rescheduling Asset' : 'Asset to Pick Up', style: const TextStyle(fontSize: 14, color: Colors.grey)),
                   const SizedBox(height: 8),
-                  Text(_passedAsset!.name, style: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold, color: Color(0xFF800000))),
-                  Text('Weight: ${_passedAsset!.weight} Baht', style: const TextStyle(fontSize: 14)),
+                  Text(assetName, style: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold, color: Color(0xFF800000))),
+                  if (!isEditing) Text('Weight: ${_passedAsset!.weight} Baht', style: const TextStyle(fontSize: 14)),
                 ],
               ),
             ),
@@ -269,7 +389,7 @@ class _AppointmentPageState extends State<AppointmentPage> {
             ),
             child: _isProcessing 
               ? const SizedBox(height: 20, width: 20, child: CircularProgressIndicator(color: Colors.white, strokeWidth: 2))
-              : const Text('Confirm Pickup Appointment', style: TextStyle(fontSize: 16, color: Colors.white)),
+              : Text(isEditing ? 'Confirm Reschedule' : 'Confirm Pickup Appointment', style: const TextStyle(fontSize: 16, color: Colors.white)),
           ),
         ],
       ),
@@ -307,17 +427,18 @@ class _AppointmentPageState extends State<AppointmentPage> {
           itemCount: appointments.length,
           itemBuilder: (context, index) {
             final apt = appointments[index];
-            final isFuture = apt.date.isAfter(DateTime.now());
-            final color = apt.status == 'completed' ? Colors.green : (isFuture ? Colors.blue : Colors.grey);
-            final icon = apt.status == 'completed' ? Icons.check_circle : (isFuture ? Icons.schedule : Icons.history);
+            final isCompleted = apt.status == 'completed';
+            final color = isCompleted ? Colors.green : const Color(0xFF800000); // Brand primary color
+            final icon = isCompleted ? Icons.check_circle : Icons.schedule;
 
             return Card(
               margin: const EdgeInsets.only(bottom: 12),
               shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
               child: ListTile(
+                onTap: () => _showAppointmentOptions(apt),
                 contentPadding: const EdgeInsets.all(16),
                 leading: CircleAvatar(
-                  backgroundColor: color.withOpacity(0.1),
+                  backgroundColor: color.withValues(alpha: 0.1),
                   child: Icon(icon, color: color),
                 ),
                 title: Text(apt.assetName, style: const TextStyle(fontWeight: FontWeight.bold)),
@@ -326,7 +447,10 @@ class _AppointmentPageState extends State<AppointmentPage> {
                   children: [
                     const SizedBox(height: 4),
                     Text(DateFormat('EEEE, dd MMM yyyy • hh:mm a').format(apt.date)),
-                    Text('Status: ${apt.status.toUpperCase()}', style: TextStyle(fontSize: 12, color: color, fontWeight: FontWeight.bold)),
+                    Text(
+                      isCompleted ? 'COMPLETED' : 'SCHEDULED (Tap to Manage)',
+                      style: TextStyle(fontSize: 12, color: color, fontWeight: FontWeight.bold)
+                    ),
                   ],
                 ),
               ),

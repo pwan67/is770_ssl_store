@@ -584,6 +584,52 @@ class MockService {
     });
   }
 
+  Future<void> updateAppointment(String appointmentId, DateTime newDate) async {
+    final uid = currentUserId;
+    if (uid == null) throw Exception('User not logged in');
+
+    // Capacity Check
+    final isoDateStart = newDate.toIso8601String();
+    final existingParams = await FirebaseFirestore.instance
+        .collection('appointments')
+        .where('date', isEqualTo: isoDateStart)
+        .get();
+        
+    final scheduledBookingsCount = existingParams.docs
+        .where((d) => d.data()['status'] == 'scheduled' && d.id != appointmentId)
+        .length;
+        
+    if (scheduledBookingsCount >= 2) {
+      throw Exception('This time slot has reached maximum capacity.');
+    }
+
+    await FirebaseFirestore.instance
+        .collection('appointments')
+        .doc(appointmentId)
+        .update({
+      'date': newDate.toIso8601String(),
+    });
+  }
+
+  Future<void> cancelAppointment(String appointmentId, String assetId) async {
+    final uid = currentUserId;
+    if (uid == null) throw Exception('User not logged in');
+
+    await FirebaseFirestore.instance
+        .collection('appointments')
+        .doc(appointmentId)
+        .delete();
+
+    await FirebaseFirestore.instance
+        .collection('users')
+        .doc(uid)
+        .collection('assets')
+        .doc(assetId)
+        .update({
+      'status': 'owned',
+    });
+  }
+
   // Live Cloud Products Stream
   Stream<List<Product>> getProductsStream() {
     return FirebaseFirestore.instance
