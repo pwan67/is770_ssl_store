@@ -1,0 +1,393 @@
+import 'package:flutter/material.dart';
+import 'package:firebase_auth/firebase_auth.dart';
+import '../services/auth_service.dart';
+import '../models/gold_asset.dart';
+import '../models/gold_rate.dart';
+import '../models/gold_transaction.dart';
+import '../services/mock_service.dart';
+import '../widgets/gold_rate_card.dart';
+
+class TradingPage extends StatefulWidget {
+  final int initialTabIndex;
+  const TradingPage({super.key, this.initialTabIndex = 0});
+
+  @override
+  State<TradingPage> createState() => _TradingPageState();
+}
+
+class _TradingPageState extends State<TradingPage> with SingleTickerProviderStateMixin {
+  late TabController _tabController;
+  final MockService _service = MockService();
+  final AuthService _authService = AuthService();
+  late Stream<GoldRate> _goldRateStream;
+  GoldRate? _currentRate;
+
+  @override
+  void initState() {
+    super.initState();
+    _tabController = TabController(length: 3, vsync: this, initialIndex: widget.initialTabIndex);
+    _goldRateStream = _service.getGoldRateStream();
+    _goldRateStream.listen((rate) {
+      if (mounted) setState(() => _currentRate = rate);
+    });
+  }
+
+  @override
+  void dispose() {
+    _tabController.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return StreamBuilder<User?>(
+      stream: _authService.user,
+      builder: (context, authSnapshot) {
+        if (authSnapshot.connectionState == ConnectionState.waiting) {
+          return const Scaffold(body: Center(child: CircularProgressIndicator()));
+        }
+        if (!authSnapshot.hasData) {
+           return Scaffold(
+            appBar: AppBar(title: const Text('Trading & Services')),
+            body: Center(
+              child: Column(
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: [
+                   const Icon(Icons.lock_outline, size: 64, color: Colors.grey),
+                   const SizedBox(height: 16),
+                   const Text('Please login to access Trading & Services', style: TextStyle(fontSize: 18)),
+                   const SizedBox(height: 24),
+                   ElevatedButton(
+                     onPressed: () => Navigator.pushNamed(context, '/login'),
+                     style: ElevatedButton.styleFrom(
+                       backgroundColor: const Color(0xFF800000),
+                       foregroundColor: Colors.white,
+                     ),
+                     child: const Text('Login / Sign Up'),
+                   )
+                ],
+              ),
+            ),
+          );
+        }
+
+        return Scaffold(
+          appBar: AppBar(
+            title: const Text('Trading & Services'),
+            bottom: TabBar(
+              controller: _tabController,
+              tabs: const [
+                Tab(text: 'Buy', icon: Icon(Icons.shopping_cart)),
+                Tab(text: 'Sell', icon: Icon(Icons.sell)),
+                Tab(text: 'Pawn', icon: Icon(Icons.account_balance_wallet)),
+              ],
+              labelColor: const Color(0xFFFFD700),
+              unselectedLabelColor: Colors.white70,
+              indicatorColor: const Color(0xFFFFD700),
+            ),
+          ),
+          body: Column(
+            children: [
+              Padding(
+                padding: const EdgeInsets.all(16.0),
+                child: _currentRate != null 
+                  ? GoldRateCard(rate: _currentRate!)
+                  : const Center(child: CircularProgressIndicator()),
+              ),
+              Expanded(
+                child: TabBarView(
+                  controller: _tabController,
+                  children: [
+                    _BuyTab(service: _service, currentRate: _currentRate),
+                    _SellTab(service: _service, currentRate: _currentRate),
+                    _PawnTab(service: _service, currentRate: _currentRate),
+                  ],
+                ),
+              ),
+            ],
+          ),
+        );
+      }
+    );
+  }
+}
+
+// -- Buy Tab --
+class _BuyTab extends StatefulWidget {
+  final MockService service;
+  final GoldRate? currentRate;
+  const _BuyTab({required this.service, this.currentRate});
+
+  @override
+  State<_BuyTab> createState() => _BuyTabState();
+}
+
+class _BuyTabState extends State<_BuyTab> {
+  double _weight = 1.0;
+  bool _isProcessing = false;
+
+  @override
+  Widget build(BuildContext context) {
+    if (widget.currentRate == null) return const Center(child: CircularProgressIndicator());
+    
+    double total = _weight * widget.currentRate!.sellPrice;
+
+    return SingleChildScrollView(
+      padding: const EdgeInsets.all(24),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          const Text('Select Weight (Baht)', style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
+          Slider(
+            value: _weight,
+            min: 0.25,
+            max: 10,
+            divisions: 39,
+            label: '$_weight Baht',
+            activeColor: const Color(0xFF800000),
+            onChanged: (val) => setState(() => _weight = val),
+          ),
+          Row(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              Text('$_weight Baht', style: const TextStyle(fontSize: 24, fontWeight: FontWeight.bold, color: Color(0xFF800000))),
+            ],
+          ),
+          const SizedBox(height: 32),
+          Container(
+            padding: const EdgeInsets.all(20),
+            decoration: BoxDecoration(
+              color: Colors.white,
+              borderRadius: BorderRadius.circular(16),
+              border: Border.all(color: const Color(0xFF800000).withOpacity(0.2)),
+            ),
+            child: Column(
+              children: [
+                _rowItem('Gold Price', '฿ ${widget.currentRate!.sellPrice.toStringAsFixed(0)} / Baht'),
+                const Divider(),
+                _rowItem('Total Amount', '฿ ${total.toStringAsFixed(0)}', isBold: true),
+              ],
+            ),
+          ),
+          const SizedBox(height: 48),
+          ElevatedButton(
+            onPressed: _isProcessing ? null : () async {
+              setState(() => _isProcessing = true);
+              await widget.service.createTransaction(
+                assetName: 'Gold Bar (New)',
+                weight: _weight,
+                amount: total,
+                type: TransactionType.buy,
+                category: 'Bar',
+              );
+              if (mounted) {
+                ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Purchase Successful!')));
+                setState(() => _isProcessing = false);
+              }
+            },
+            style: ElevatedButton.styleFrom(
+              backgroundColor: const Color(0xFF800000),
+              foregroundColor: Colors.white,
+              padding: const EdgeInsets.symmetric(vertical: 18),
+              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+            ),
+            child: _isProcessing 
+              ? const CircularProgressIndicator(color: Colors.white) 
+              : const Text('Confirm Purchase', style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _rowItem(String label, String value, {bool isBold = false}) {
+    return Padding(
+      padding: const EdgeInsets.symmetric(vertical: 8),
+      child: Row(
+        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+        children: [
+          Text(label, style: const TextStyle(fontSize: 16)),
+          Text(value, style: TextStyle(fontSize: 16, fontWeight: isBold ? FontWeight.bold : FontWeight.normal)),
+        ],
+      ),
+    );
+  }
+}
+
+// -- Sell Tab --
+class _SellTab extends StatefulWidget {
+  final MockService service;
+  final GoldRate? currentRate;
+  const _SellTab({required this.service, this.currentRate});
+
+  @override
+  State<_SellTab> createState() => _SellTabState();
+}
+
+class _SellTabState extends State<_SellTab> {
+  bool _isProcessing = false;
+
+  void _showSellConfirmation(BuildContext context, GoldAsset asset, double estimatedValue) {
+    showDialog(
+      context: context,
+      barrierDismissible: !_isProcessing,
+      builder: (BuildContext context) {
+        return StatefulBuilder(
+          builder: (context, setStateDialog) {
+             return AlertDialog(
+              title: const Text('Confirm Sale'),
+              content: Column(
+                mainAxisSize: MainAxisSize.min,
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text('Asset: ${asset.name}'),
+                  Text('Weight: ${asset.weight} Baht'),
+                  const SizedBox(height: 12),
+                  const Text('Estimated Value:', style: TextStyle(fontWeight: FontWeight.bold)),
+                  Text('฿ ${estimatedValue.toStringAsFixed(0)}', style: const TextStyle(color: Colors.green, fontSize: 20, fontWeight: FontWeight.bold)),
+                  const SizedBox(height: 12),
+                  const Text('Are you sure you want to sell this asset? This action cannot be undone.', style: TextStyle(fontSize: 12, color: Colors.grey)),
+                ],
+              ),
+              actions: [
+                TextButton(
+                  onPressed: _isProcessing ? null : () => Navigator.of(context).pop(),
+                  child: const Text('Cancel'),
+                ),
+                ElevatedButton(
+                  onPressed: _isProcessing ? null : () async {
+                    setStateDialog(() => _isProcessing = true);
+                    setState(() => _isProcessing = true); // Update underlying tab state too (optional, for safety)
+                    
+                    try {
+                       await widget.service.sellAsset(asset: asset, sellPrice: estimatedValue);
+                       if (mounted) {
+                          Navigator.of(context).pop(); // Close dialog
+                          ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Asset Sold Successfully!')));
+                       }
+                    } catch (e) {
+                      if (mounted) {
+                          ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Error selling asset: $e')));
+                      }
+                    } finally {
+                       if (mounted) {
+                          setStateDialog(() => _isProcessing = false);
+                          setState(() => _isProcessing = false);
+                       }
+                    }
+                  },
+                  style: ElevatedButton.styleFrom(backgroundColor: Colors.red),
+                  child: _isProcessing 
+                    ? const SizedBox(width: 16, height: 16, child: CircularProgressIndicator(color: Colors.white, strokeWidth: 2))
+                    : const Text('Confirm Sell', style: TextStyle(color: Colors.white)),
+                ),
+              ],
+            );
+          }
+        );
+      },
+    );
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return StreamBuilder<List<GoldAsset>>(
+      stream: widget.service.getMemberAssetsStream(),
+      builder: (context, snapshot) {
+        if (snapshot.connectionState == ConnectionState.waiting) {
+          return const Center(child: CircularProgressIndicator());
+        }
+        if (snapshot.hasError) {
+          return Center(child: Text('Error: ${snapshot.error}'));
+        }
+        
+        final assets = snapshot.data ?? [];
+        if (assets.isEmpty) {
+          return const Center(
+            child: Padding(
+              padding: EdgeInsets.all(20.0),
+              child: Text('No assets to sell.', style: TextStyle(color: Colors.grey)),
+            ),
+          );
+        }
+
+        return ListView.builder(
+          padding: const EdgeInsets.all(16),
+          itemCount: assets.length,
+          itemBuilder: (context, index) {
+            final asset = assets[index];
+            final estimatedValue = asset.weight * (widget.currentRate?.buyPrice ?? 0);
+            
+            return Card(
+              margin: const EdgeInsets.only(bottom: 12),
+              child: ListTile(
+                leading: const CircleAvatar(backgroundColor: Color(0xFFFFD700), child: Icon(Icons.sell, color: Color(0xFF800000))),
+                title: Text(asset.name),
+                subtitle: Text('${asset.weight} Baht'),
+                trailing: Column(
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  crossAxisAlignment: CrossAxisAlignment.end,
+                  children: [
+                    const Text('EST. VALUE', style: TextStyle(fontSize: 10, color: Colors.grey)),
+                    Text('฿ ${estimatedValue.toStringAsFixed(0)}', 
+                      style: const TextStyle(fontWeight: FontWeight.bold, color: Colors.green)),
+                  ],
+                ),
+                onTap: _isProcessing ? null : () => _showSellConfirmation(context, asset, estimatedValue),
+              ),
+            );
+          },
+        );
+      },
+    );
+  }
+}
+
+// -- Pawn Tab --
+class _PawnTab extends StatelessWidget {
+  final MockService service;
+  final GoldRate? currentRate;
+  const _PawnTab({required this.service, this.currentRate});
+
+  @override
+  Widget build(BuildContext context) {
+    return Column(
+      children: [
+        Container(
+          padding: const EdgeInsets.all(16),
+          color: const Color(0xFFFFF8E1),
+          child: Row(
+            children: const [
+              Icon(Icons.info_outline, color: Color(0xFF800000)),
+              SizedBox(width: 12),
+              Expanded(child: Text('Interest rate: 1.25% per month. Loan up to 85% of market value.', style: TextStyle(fontSize: 12))),
+            ],
+          ),
+        ),
+        Expanded(
+          child: Center(
+            child: Column(
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: [
+                const Icon(Icons.camera_alt_outlined, size: 64, color: Colors.grey),
+                const SizedBox(height: 16),
+                const Text('Pawn New Item', style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
+                const Text('Bring your physical gold to our shop \nor scan your digital certificate.', textAlign: TextAlign.center),
+                const SizedBox(height: 24),
+                ElevatedButton.icon(
+                  onPressed: () {},
+                  icon: const Icon(Icons.qr_code_scanner),
+                  label: const Text('Scan QR / Upload Photo'),
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: const Color(0xFF800000),
+                    foregroundColor: Colors.white,
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ),
+      ],
+    );
+  }
+}

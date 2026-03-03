@@ -1,0 +1,330 @@
+import 'dart:async';
+import 'package:cloud_firestore/cloud_firestore.dart';
+import '../models/gold_rate.dart';
+import '../models/product.dart';
+import '../models/news_item.dart';
+import '../models/gold_asset.dart';
+import '../models/gold_transaction.dart';
+
+import 'package:firebase_auth/firebase_auth.dart';
+
+class MockService {
+  // Singleton pattern
+  static final MockService _instance = MockService._internal();
+  factory MockService() => _instance;
+  MockService._internal();
+
+  // Get current user ID
+  String? get currentUserId => FirebaseAuth.instance.currentUser?.uid;
+
+  // Mock News Data
+  List<NewsItem> getNews() {
+    return [
+      NewsItem(
+        id: '1',
+        title: 'Why Gold is the Best Safe Haven Asset?',
+        summary: 'In times of economic uncertainty, gold is the answer. Maintain your wealth value...',
+        imageUrl: 'https://via.placeholder.com/150x150/FFD700/000000?text=Safe+Haven',
+        date: DateTime.now().subtract(const Duration(days: 1)),
+        content: 'Full article content about safe haven...',
+      ),
+      NewsItem(
+        id: '2',
+        title: 'Gold Price Analysis: Upward Trend continues',
+        summary: 'Experts predict continued growth for gold prices this quarter due to global factors.',
+        imageUrl: 'https://via.placeholder.com/150x150/800000/FFFFFF?text=Price+Up',
+        date: DateTime.now().subtract(const Duration(days: 3)),
+        content: 'Full analysis content...',
+      ),
+      NewsItem(
+        id: '3',
+        title: 'Understanding 96.5% vs 99.99% Gold',
+        summary: 'What is the difference and which one is right for investment? Let us explain.',
+        imageUrl: 'https://via.placeholder.com/150x150/FFA000/000000?text=Gold+Standard',
+        date: DateTime.now().subtract(const Duration(days: 5)),
+        content: 'Full educational content...',
+      ),
+    ];
+  }
+
+  // Live Cloud Gold Rate Stream
+  Stream<GoldRate> getGoldRateStream() {
+    return FirebaseFirestore.instance
+        .collection('market')
+        .doc('gold_rate')
+        .snapshots()
+        .map((snapshot) {
+      if (!snapshot.exists || snapshot.data() == null) {
+        final now = DateTime.now();
+        int hour = now.hour;
+        String period = 'AM';
+        if (hour >= 12) {
+          period = 'PM';
+          if (hour > 12) hour -= 12;
+        }
+        if (hour == 0) hour = 12;
+        String formattedTime = '$hour:${now.minute.toString().padLeft(2, '0')} $period';
+
+        return GoldRate(
+          buyPrice: 40000.0,
+          sellPrice: 40100.0,
+          timestamp: now,
+          updateTime: formattedTime,
+          trend: 'stable',
+        );
+      }
+      
+      final data = snapshot.data()!;
+      final buy = (data['buyPrice'] ?? 40000).toDouble();
+      final sell = (data['sellPrice'] ?? 40100).toDouble();
+      
+      Timestamp? ts = data['timestamp'] as Timestamp?;
+      final trend = data['trend'] as String? ?? 'stable';
+      final dateTime = ts?.toDate() ?? DateTime.now();
+
+      int hour = dateTime.hour;
+      String period = 'AM';
+      if (hour >= 12) {
+        period = 'PM';
+        if (hour > 12) hour -= 12;
+      }
+      if (hour == 0) hour = 12;
+      
+      final formattedTimeStr = '$hour:${dateTime.minute.toString().padLeft(2, '0')} $period';
+
+      return GoldRate(
+        buyPrice: buy,
+        sellPrice: sell,
+        timestamp: dateTime,
+        updateTime: formattedTimeStr,
+        trend: trend,
+      );
+    });
+  }
+
+  // Cloud Assets & Transactions Streams
+  Stream<List<GoldAsset>> getMemberAssetsStream() {
+    final uid = currentUserId;
+    if (uid == null) return Stream.value([]);
+
+    return FirebaseFirestore.instance
+        .collection('users')
+        .doc(uid)
+        .collection('assets')
+        .snapshots()
+        .map((snapshot) {
+      return snapshot.docs.map((doc) {
+        final data = doc.data();
+        return GoldAsset(
+          id: doc.id,
+          name: data['name'] ?? 'Unknown Asset',
+          weight: (data['weight'] ?? 0 as num).toDouble(),
+          category: data['category'] ?? 'General',
+          acquisitionDate: (data['acquisitionDate'] as Timestamp?)?.toDate() ?? DateTime.now(),
+          acquisitionPrice: (data['acquisitionPrice'] ?? 0 as num).toDouble(),
+          status: data['status'] ?? 'owned',
+        );
+      }).toList();
+    });
+  }
+
+  Stream<List<GoldTransaction>> getTransactionHistoryStream() {
+    final uid = currentUserId;
+    if (uid == null) return Stream.value([]);
+
+    return FirebaseFirestore.instance
+        .collection('users')
+        .doc(uid)
+        .collection('transactions')
+        .orderBy('timestamp', descending: true)
+        .snapshots()
+        .map((snapshot) {
+      return snapshot.docs.map((doc) {
+        final data = doc.data();
+        // Simple string to enum mapping
+        TransactionType type = TransactionType.buy;
+        if (data['type'] == 'sell') type = TransactionType.sell;
+        else if (data['type'] == 'pawn') type = TransactionType.pawn;
+
+        return GoldTransaction(
+          id: doc.id,
+          assetId: data['assetId'] ?? '',
+          type: type,
+          amount: (data['amount'] ?? 0 as num).toDouble(),
+          weight: (data['weight'] ?? 0 as num).toDouble(),
+          timestamp: (data['timestamp'] as Timestamp?)?.toDate() ?? DateTime.now(),
+          details: data['details'] ?? '',
+        );
+      }).toList();
+    });
+  }
+
+  Future<void> createTransaction({
+    required String assetName,
+    required double weight,
+    required double amount,
+    required TransactionType type,
+    String? category,
+    String? productId, // For simulated stock reduction
+  }) async {
+    // Simulate network delay
+    await Future.delayed(const Duration(seconds: 1));
+
+    final id = DateTime.now().millisecondsSinceEpoch.toString();
+    
+    if (type == TransactionType.buy) {
+      // Real Database Write: Deduct Stock
+      if (productId != null) {
+        try {
+           final docRef = FirebaseFirestore.instance.collection('products').doc(productId);
+           // Ask Firestore to atomically guarantee the stock goes down by exactly 1
+           await docRef.update({'stock': FieldValue.increment(-1)});
+        } catch (e) {
+          print('Error reducing stock: $e');
+        }
+      }
+
+      // Convert to Firestore Document
+      final assetDoc = {
+        'name': assetName,
+        'weight': weight,
+        'category': category ?? 'General',
+        'acquisitionDate': FieldValue.serverTimestamp(),
+        'acquisitionPrice': amount,
+        'status': 'owned',
+      };
+      
+      // Write to Cloud Portfolio
+      final uid = currentUserId;
+      if (uid != null) {
+        await FirebaseFirestore.instance
+            .collection('users')
+            .doc(uid)
+            .collection('assets')
+            .doc('a$id')
+            .set(assetDoc);
+      }
+    }
+
+    final transactionDoc = {
+      'assetId': 'a$id',
+      'type': type.name,
+      'amount': amount,
+      'weight': weight,
+      'timestamp': FieldValue.serverTimestamp(),
+      'details': '${type.name.toUpperCase()}: $assetName ($weight Baht)',
+    };
+    
+    // Write to Cloud Transaction History
+    final uid = currentUserId;
+    if (uid != null) {
+      await FirebaseFirestore.instance
+          .collection('users')
+          .doc(uid)
+          .collection('transactions')
+          .doc('t$id')
+          .set(transactionDoc);
+          
+      // Write to global transactions collection for store admin visibility
+      final globalTxDoc = Map<String, dynamic>.from(transactionDoc);
+      globalTxDoc['userId'] = uid;
+      globalTxDoc['userEmail'] = FirebaseAuth.instance.currentUser?.email ?? 'Unknown Email';
+      
+      await FirebaseFirestore.instance
+          .collection('transactions')
+          .doc('t$id')
+          .set(globalTxDoc);
+    }
+  }
+
+  Future<void> sellAsset({
+    required GoldAsset asset,
+    required double sellPrice,
+  }) async {
+    final uid = currentUserId;
+    if (uid == null) throw Exception('User not logged in');
+
+    // Simulate network delay
+    await Future.delayed(const Duration(seconds: 1));
+
+    // 1. Remove the asset from the user's portfolio
+    await FirebaseFirestore.instance
+        .collection('users')
+        .doc(uid)
+        .collection('assets')
+        .doc(asset.id)
+        .delete();
+
+    // 2. Create the Sell Transaction record
+    final id = DateTime.now().millisecondsSinceEpoch.toString();
+    final transactionDoc = {
+      'assetId': asset.id,
+      'type': TransactionType.sell.name,
+      'amount': sellPrice,
+      'weight': asset.weight,
+      'timestamp': FieldValue.serverTimestamp(),
+      'details': 'SELL: ${asset.name} (${asset.weight} Baht)',
+    };
+
+    // Write to user transactions
+    await FirebaseFirestore.instance
+        .collection('users')
+        .doc(uid)
+        .collection('transactions')
+        .doc('t$id')
+        .set(transactionDoc);
+
+    // Write to global transactions for store admins
+    final globalTxDoc = Map<String, dynamic>.from(transactionDoc);
+    globalTxDoc['userId'] = uid;
+    globalTxDoc['userEmail'] = FirebaseAuth.instance.currentUser?.email ?? 'Unknown Email';
+
+    await FirebaseFirestore.instance
+        .collection('transactions')
+        .doc('t$id')
+        .set(globalTxDoc);
+  }
+
+  double calculatePawnLoan(double weight, double currentBuyPrice) {
+    // Standard pawn shop rule: ~85-90% of buyback value
+    return (weight * currentBuyPrice) * 0.85;
+  }
+
+  double calculatePawnInterest(double loanAmount, int days) {
+    // Mock interest: 1.25% per month
+    double monthlyRate = 0.0125;
+    return loanAmount * monthlyRate * (days / 30.0);
+  }
+
+  // Live Cloud Products Stream
+  Stream<List<Product>> getProductsStream() {
+    return FirebaseFirestore.instance
+        .collection('products')
+        .snapshots()
+        .map((snapshot) {
+      return snapshot.docs.map((doc) {
+        final data = doc.data();
+        return Product(
+          id: doc.id,
+          name: data['name'] ?? 'Unknown Product',
+          description: data['description'] ?? '',
+          price: (data['price'] ?? 0 as num).toDouble(),
+          weight: (data['weight'] ?? 0 as num).toDouble(),
+          laborFee: (data['laborFee'] ?? 0 as num).toDouble(),
+          stock: data['stock'] ?? 0,
+          imageUrl: data['imageUrl'] ?? '',
+          category: data['category'] ?? 'General',
+        );
+      }).toList();
+    });
+  }
+
+  // Search and Filter helper (to be used locally on the streamed list)
+  List<Product> filterProducts(List<Product> allProducts, String query) {
+    if (query.isEmpty) return allProducts;
+    return allProducts.where((p) =>
+      p.name.toLowerCase().contains(query.toLowerCase()) ||
+      p.category.toLowerCase().contains(query.toLowerCase())
+    ).toList();
+  }
+}

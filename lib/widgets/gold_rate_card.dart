@@ -1,0 +1,108 @@
+import 'package:flutter/material.dart';
+import '../models/gold_rate.dart';
+
+class GoldRateCard extends StatelessWidget {
+  final GoldRate rate;
+
+  const GoldRateCard({super.key, required this.rate});
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      padding: const EdgeInsets.all(4),
+      decoration: BoxDecoration(
+        color: const Color(0xFF800000), // Deep Red
+        borderRadius: BorderRadius.circular(16),
+        border: Border.all(color: const Color(0xFFFFD700), width: 3), // Gold Border
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withOpacity(0.4),
+            blurRadius: 10,
+            offset: const Offset(0, 4),
+          )
+        ],
+      ),
+      child: Column(
+        children: [
+          // Header
+          Container(
+             padding: const EdgeInsets.symmetric(vertical: 8),
+             margin: const EdgeInsets.only(bottom: 12),
+             decoration: const BoxDecoration(
+               border: Border(bottom: BorderSide(color: Color(0xFFFFD700), width: 1)),
+             ),
+             child: Row(
+               mainAxisAlignment: MainAxisAlignment.center,
+               children: [
+                 const Text(
+                   'Today\'s Gold Rate (96.5%)',
+                   style: TextStyle(
+                     color: Color(0xFFFFD700), 
+                     fontSize: 22, 
+                     fontWeight: FontWeight.bold,
+                     fontFamily: 'Courier', // Monospace for digital look
+                   ),
+                 ),
+                 const SizedBox(width: 8),
+                 Icon(
+                    rate.trend == 'up' ? Icons.arrow_upward : Icons.arrow_downward,
+                    color: rate.trend == 'up' ? Colors.greenAccent : Colors.redAccent,
+                    size: 28,
+                 ),
+               ],
+             ),
+          ),
+          
+          // Prices
+          Row(
+            children: [
+               Expanded(child: _buildPriceColumn('We Buy', rate.buyPrice)),
+               Container(width: 2, height: 60, color: const Color(0xFFFFD700)),
+               Expanded(child: _buildPriceColumn('We Sell', rate.sellPrice)),
+            ],
+          ),
+          
+          const SizedBox(height: 12),
+          Text(
+            'Updated: ${rate.updateTime}',
+            style: const TextStyle(color: Color(0xFFFFE0B2), fontSize: 14),
+          ),
+          const SizedBox(height: 4),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildPriceColumn(String label, double price) {
+    return Column(
+      children: [
+        Text(
+          label, 
+          style: const TextStyle(
+            color: Colors.white, 
+            fontSize: 16,
+            fontWeight: FontWeight.bold
+          )
+        ),
+        const SizedBox(height: 4),
+        Text(
+          price.toStringAsFixed(0),
+          style: const TextStyle(
+            color: Color(0xFFFFD700), 
+            fontSize: 36, 
+            fontWeight: FontWeight.bold,
+            fontFamily: 'Courier', // LED style
+            letterSpacing: 2,
+            shadows: [
+               Shadow(
+                 blurRadius: 10.0,
+                 color: Color(0xFFFFD700),
+                 offset: Offset(0, 0),
+               ),
+             ],
+          ),
+        ),
+      ],
+    );
+  }
+}
