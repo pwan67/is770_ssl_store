@@ -147,7 +147,7 @@ class _PortfolioPageState extends State<PortfolioPage> {
                   final walletBalance = walletSnapshot.data ?? 0.0;
                   
                   // Asset List preparation
-                  final ownedAssets = assets.where((a) => a.status == 'owned').toList();
+                  final ownedAssets = assets.where((a) => a.status == 'owned' || a.status == 'pickup_scheduled').toList();
                   final pawnedAssets = assets.where((a) => a.status == 'pawned').toList();
 
                   return SingleChildScrollView(
@@ -528,9 +528,47 @@ class _AssetCardState extends State<_AssetCard> {
     );
   }
 
+  void _showOwnedAssetOptions(BuildContext context, double currentVal) {
+    showModalBottomSheet(
+      context: context,
+      shape: const RoundedRectangleBorder(borderRadius: BorderRadius.vertical(top: Radius.circular(20))),
+      builder: (context) {
+        return SafeArea(
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Container(margin: const EdgeInsets.only(top: 8, bottom: 8), width: 40, height: 4, decoration: BoxDecoration(color: Colors.grey[300], borderRadius: BorderRadius.circular(2))),
+              ListTile(
+                leading: const Icon(Icons.storefront, color: Color(0xFF800000)),
+                title: const Text('Pick Up Physical Gold In-Store', style: TextStyle(fontWeight: FontWeight.bold)),
+                subtitle: const Text('Schedule an appointment to collect your gold.'),
+                onTap: () {
+                  Navigator.pop(context);
+                  Navigator.pushNamed(context, '/appointment', arguments: widget.asset);
+                },
+              ),
+              const Divider(height: 1),
+              ListTile(
+                leading: const Icon(Icons.sell, color: Colors.green),
+                title: const Text('Sell Digital Gold Asset', style: TextStyle(fontWeight: FontWeight.bold)),
+                subtitle: Text('Estimated value: ฿ ${currentVal.toInt()}'),
+                onTap: () {
+                  Navigator.pop(context);
+                  _showSellConfirmation(context, currentVal);
+                },
+              ),
+              const SizedBox(height: 16),
+            ],
+          ),
+        );
+      }
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     bool isPawned = widget.asset.status == 'pawned';
+    bool isScheduled = widget.asset.status == 'pickup_scheduled';
     double currentVal = widget.asset.weight * (widget.currentRate?.buyPrice ?? 0);
     double profit = currentVal - widget.asset.acquisitionPrice;
 
@@ -561,7 +599,9 @@ class _AssetCardState extends State<_AssetCard> {
            ? null 
            : (isPawned 
                ? () => _showRedeemConfirmation(context, principal, interest, penalty, totalOwed)
-               : () => _showSellConfirmation(context, currentVal)),
+               : (isScheduled 
+                    ? () => ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('This asset is locked for a scheduled pickup.')))
+                    : () => _showOwnedAssetOptions(context, currentVal))),
         borderRadius: BorderRadius.circular(12),
         child: Padding(
           padding: const EdgeInsets.all(16.0),
@@ -589,6 +629,8 @@ class _AssetCardState extends State<_AssetCard> {
                         Text('OVERDUE (${-daysUntilDue} days)', style: const TextStyle(fontSize: 12, color: Colors.red, fontWeight: FontWeight.bold))
                       else
                         Text('Due in $daysUntilDue days', style: const TextStyle(fontSize: 12, color: Colors.orange)),
+                    ] else if (isScheduled) ...[
+                      const Text('Store Pickup Scheduled', style: TextStyle(fontSize: 12, color: Color(0xFF800000), fontWeight: FontWeight.bold)),
                     ] else
                       Text('${widget.asset.weight} Baht • Acquired ฿ ${widget.asset.acquisitionPrice.toInt()}', style: const TextStyle(fontSize: 12, color: Colors.grey)),
                   ],

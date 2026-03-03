@@ -5,6 +5,7 @@ import '../models/product.dart';
 import '../models/news_item.dart';
 import '../models/gold_asset.dart';
 import '../models/gold_transaction.dart';
+import '../models/appointment.dart';
 
 import 'package:firebase_auth/firebase_auth.dart';
 
@@ -494,6 +495,61 @@ class MockService {
       'penaltyInterest': penaltyInterest,
       'totalOwed': principal + standardInterest + penaltyInterest,
     };
+  }
+
+  // -- Appointments --
+  
+  Stream<List<Appointment>> getAppointmentsStream() {
+    final uid = currentUserId;
+    if (uid == null) return Stream.value([]);
+
+    return FirebaseFirestore.instance
+        .collection('users')
+        .doc(uid)
+        .collection('appointments')
+        .orderBy('date', descending: false)
+        .snapshots()
+        .map((snapshot) {
+      return snapshot.docs.map((doc) => Appointment.fromMap(doc.id, doc.data())).toList();
+    });
+  }
+
+  Future<void> createAppointment({
+    required GoldAsset asset,
+    required DateTime appointmentDate,
+  }) async {
+    final uid = currentUserId;
+    if (uid == null) throw Exception('User not logged in');
+
+    await Future.delayed(const Duration(seconds: 1));
+
+    // 1. Create Appointment Document
+    final id = DateTime.now().millisecondsSinceEpoch.toString();
+    final appointment = Appointment(
+      id: id,
+      userId: uid,
+      assetId: asset.id,
+      assetName: asset.name,
+      date: appointmentDate,
+      status: 'scheduled',
+    );
+
+    await FirebaseFirestore.instance
+        .collection('users')
+        .doc(uid)
+        .collection('appointments')
+        .doc('apt$id')
+        .set(appointment.toMap());
+
+    // 2. Update Asset Status to 'pickup_scheduled'
+    await FirebaseFirestore.instance
+        .collection('users')
+        .doc(uid)
+        .collection('assets')
+        .doc(asset.id)
+        .update({
+      'status': 'pickup_scheduled',
+    });
   }
 
   // Live Cloud Products Stream
