@@ -145,6 +145,10 @@ class _PortfolioPageState extends State<PortfolioPage> {
                 stream: _service.getWalletBalanceStream(),
                 builder: (context, walletSnapshot) {
                   final walletBalance = walletSnapshot.data ?? 0.0;
+                  
+                  // Asset List preparation
+                  final ownedAssets = assets.where((a) => a.status == 'owned').toList();
+                  final pawnedAssets = assets.where((a) => a.status == 'pawned').toList();
 
                   return SingleChildScrollView(
                     padding: const EdgeInsets.all(16),
@@ -227,16 +231,26 @@ class _PortfolioPageState extends State<PortfolioPage> {
                         ),
                         const SizedBox(height: 32),
                     
-                    // Asset List
-                    _SectionHeader(title: 'My Assets (${assets.length})'),
-                    const SizedBox(height: 12),
-                    if (assets.isEmpty)
+                    if (assets.isEmpty) ...[
+                      const _SectionHeader(title: 'My Assets (0)'),
+                      const SizedBox(height: 12),
                       const Center(child: Padding(
                         padding: EdgeInsets.all(20.0),
                         child: Text('No gold assets yet.\nStart buying to build your portfolio!', textAlign: TextAlign.center, style: TextStyle(color: Colors.grey)),
                       ))
-                    else
-                      ...assets.map((asset) => _AssetCard(asset: asset, currentRate: _currentRate)),
+                    ] else ...[
+                      if (ownedAssets.isNotEmpty) ...[
+                        _SectionHeader(title: 'My Owned Gold (${ownedAssets.length})'),
+                        const SizedBox(height: 12),
+                        ...ownedAssets.map((asset) => _AssetCard(asset: asset, currentRate: _currentRate)),
+                      ],
+                      if (pawnedAssets.isNotEmpty) ...[
+                        const SizedBox(height: 16),
+                        _SectionHeader(title: 'My Pawned Gold (${pawnedAssets.length})'),
+                        const SizedBox(height: 12),
+                        ...pawnedAssets.map((asset) => _AssetCard(asset: asset, currentRate: _currentRate)),
+                      ],
+                    ],
 
                     const SizedBox(height: 32),
                     
@@ -326,6 +340,122 @@ class _AssetCardState extends State<_AssetCard> {
   final MockService _service = MockService();
   bool _isProcessing = false;
 
+  void _showRedeemConfirmation(BuildContext context, double principal, double interest, double penalty, double totalOwed) {
+    showDialog(
+      context: context,
+      barrierDismissible: !_isProcessing,
+      builder: (BuildContext context) {
+        return StatefulBuilder(
+          builder: (context, setStateDialog) {
+             return AlertDialog(
+              title: const Text('Redeem Pawned Asset'),
+              content: StreamBuilder<double>(
+                stream: _service.getWalletBalanceStream(),
+                builder: (context, snapshot) {
+                  final walletBalance = snapshot.data ?? 0.0;
+                  final newBalance = walletBalance - totalOwed;
+                  final hasEnoughFunds = walletBalance >= totalOwed;
+
+                  return Column(
+                    mainAxisSize: MainAxisSize.min,
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text('Asset: ${widget.asset.name}'),
+                      Text('Weight: ${widget.asset.weight} Baht'),
+                      const SizedBox(height: 12),
+                      Row(
+                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                        children: [
+                          const Text('Principal Loan:'),
+                          Text('฿ ${principal.toStringAsFixed(0)}'),
+                        ],
+                      ),
+                      Row(
+                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                        children: [
+                          const Text('Standard Interest:'),
+                          Text('฿ ${interest.toStringAsFixed(0)}'),
+                        ],
+                      ),
+                      if (penalty > 0) ...[
+                        Row(
+                          mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                          children: [
+                            const Text('Overdue Penalty:', style: TextStyle(color: Colors.red)),
+                            Text('฿ ${penalty.toStringAsFixed(0)}', style: const TextStyle(color: Colors.red)),
+                          ],
+                        ),
+                      ],
+                      const Divider(),
+                      Row(
+                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                        children: [
+                          const Text('Total to Pay:', style: TextStyle(fontWeight: FontWeight.bold)),
+                          Text('฿ ${totalOwed.toStringAsFixed(0)}', style: const TextStyle(color: Colors.red, fontWeight: FontWeight.bold)),
+                        ],
+                      ),
+                      const SizedBox(height: 16),
+                      if (hasEnoughFunds) ...[
+                        const Text('Estimated New Balance:', style: TextStyle(fontWeight: FontWeight.bold)),
+                        Text('฿ ${newBalance.toStringAsFixed(0)}', style: const TextStyle(color: Colors.blue, fontSize: 16, fontWeight: FontWeight.bold)),
+                      ] else ...[
+                        const Text(
+                          'Insufficient funds in wallet to redeem. Please deposit more money.',
+                          style: TextStyle(color: Colors.red, fontWeight: FontWeight.bold, fontSize: 12),
+                        ),
+                      ],
+                    ],
+                  );
+                }
+              ),
+              actions: [
+                TextButton(
+                  onPressed: _isProcessing ? null : () => Navigator.of(context).pop(),
+                  child: const Text('Cancel'),
+                ),
+                StreamBuilder<double>(
+                  stream: _service.getWalletBalanceStream(),
+                  builder: (context, snapshot) {
+                    final balance = snapshot.data ?? 0.0;
+                    final hasEnoughFunds = balance >= totalOwed;
+                    
+                    return ElevatedButton(
+                      onPressed: (_isProcessing || !hasEnoughFunds) ? null : () async {
+                        setStateDialog(() => _isProcessing = true);
+                        setState(() => _isProcessing = true);
+                        
+                        try {
+                           await _service.redeemAsset(asset: widget.asset, totalOwed: totalOwed);
+                           if (mounted) {
+                              Navigator.of(context).pop();
+                              ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Asset Redeemed Successfully!')));
+                           }
+                        } catch (e) {
+                          if (mounted) {
+                              ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Error redeeming asset: $e')));
+                          }
+                        } finally {
+                           if (mounted) {
+                              setStateDialog(() => _isProcessing = false);
+                              setState(() => _isProcessing = false);
+                           }
+                        }
+                      },
+                      style: ElevatedButton.styleFrom(backgroundColor: const Color(0xFF800000)),
+                      child: _isProcessing 
+                        ? const SizedBox(width: 16, height: 16, child: CircularProgressIndicator(color: Colors.white, strokeWidth: 2))
+                        : const Text('Confirm Redeem', style: TextStyle(color: Colors.white)),
+                    );
+                  }
+                ),
+              ],
+            );
+          }
+        );
+      },
+    );
+  }
+
   void _showSellConfirmation(BuildContext context, double estimatedValue) {
     showDialog(
       context: context,
@@ -400,14 +530,38 @@ class _AssetCardState extends State<_AssetCard> {
 
   @override
   Widget build(BuildContext context) {
+    bool isPawned = widget.asset.status == 'pawned';
     double currentVal = widget.asset.weight * (widget.currentRate?.buyPrice ?? 0);
     double profit = currentVal - widget.asset.acquisitionPrice;
 
+    // Pawn Calculations
+    double principal = widget.asset.loanAmount ?? 0.0;
+    DateTime pawnDate = widget.asset.pawnDate ?? DateTime.now();
+    DateTime dueDate = widget.asset.dueDate ?? DateTime.now().add(const Duration(days: 30));
+    double rate = widget.asset.interestRate ?? 0.0125;
+    
+    final owedData = _service.calculatePawnOwed(principal, pawnDate, dueDate, rate);
+    double totalOwed = owedData['totalOwed']!;
+    double interest = owedData['standardInterest']!;
+    double penalty = owedData['penaltyInterest']!;
+    
+    bool isOverdue = penalty > 0;
+    int daysUntilDue = dueDate.difference(DateTime.now()).inDays;
+    
+    Color pawnColor = isOverdue ? Colors.red : Colors.orange;
+
     return Card(
       margin: const EdgeInsets.only(bottom: 12),
-      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+      shape: RoundedRectangleBorder(
+        borderRadius: BorderRadius.circular(12),
+        side: isPawned ? BorderSide(color: pawnColor, width: 2) : BorderSide.none,
+      ),
       child: InkWell(
-        onTap: _isProcessing ? null : () => _showSellConfirmation(context, currentVal),
+        onTap: _isProcessing 
+           ? null 
+           : (isPawned 
+               ? () => _showRedeemConfirmation(context, principal, interest, penalty, totalOwed)
+               : () => _showSellConfirmation(context, currentVal)),
         borderRadius: BorderRadius.circular(12),
         child: Padding(
           padding: const EdgeInsets.all(16.0),
@@ -415,8 +569,14 @@ class _AssetCardState extends State<_AssetCard> {
             children: [
               Container(
                 padding: const EdgeInsets.all(10),
-                decoration: BoxDecoration(color: const Color(0xFFFFF8E1), borderRadius: BorderRadius.circular(10)),
-                child: const Icon(Icons.workspace_premium, color: Color(0xFF800000)),
+                decoration: BoxDecoration(
+                  color: isPawned ? pawnColor.withOpacity(0.1) : const Color(0xFFFFF8E1), 
+                  borderRadius: BorderRadius.circular(10)
+                ),
+                child: Icon(
+                  isPawned ? (isOverdue ? Icons.warning_amber_rounded : Icons.shield) : Icons.workspace_premium, 
+                  color: isPawned ? pawnColor : const Color(0xFF800000),
+                ),
               ),
               const SizedBox(width: 16),
               Expanded(
@@ -424,19 +584,29 @@ class _AssetCardState extends State<_AssetCard> {
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
                     Text(widget.asset.name, style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 16)),
-                    Text('${widget.asset.weight} Baht • Acquired ฿ ${widget.asset.acquisitionPrice.toInt()}', 
-                      style: const TextStyle(fontSize: 12, color: Colors.grey)),
+                    if (isPawned) ...[
+                      if (isOverdue)
+                        Text('OVERDUE (${-daysUntilDue} days)', style: const TextStyle(fontSize: 12, color: Colors.red, fontWeight: FontWeight.bold))
+                      else
+                        Text('Due in $daysUntilDue days', style: const TextStyle(fontSize: 12, color: Colors.orange)),
+                    ] else
+                      Text('${widget.asset.weight} Baht • Acquired ฿ ${widget.asset.acquisitionPrice.toInt()}', style: const TextStyle(fontSize: 12, color: Colors.grey)),
                   ],
                 ),
               ),
               Column(
                 crossAxisAlignment: CrossAxisAlignment.end,
                 children: [
-                  Text('฿ ${currentVal.toInt()}', style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 16)),
-                  Text(
-                    '${profit >= 0 ? "+" : ""}฿ ${profit.toInt()}', 
-                    style: TextStyle(fontSize: 12, color: profit >= 0 ? Colors.green : Colors.red, fontWeight: FontWeight.bold)
-                  ),
+                  if (isPawned) ...[
+                    const Text('TOTAL OWED', style: TextStyle(fontSize: 10, color: Colors.grey, fontWeight: FontWeight.bold)),
+                    Text('฿ ${totalOwed.toInt()}', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16, color: pawnColor)),
+                  ] else ...[
+                    Text('฿ ${currentVal.toInt()}', style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 16)),
+                    Text(
+                      '${profit >= 0 ? "+" : ""}฿ ${profit.toInt()}', 
+                      style: TextStyle(fontSize: 12, color: profit >= 0 ? Colors.green : Colors.red, fontWeight: FontWeight.bold)
+                    ),
+                  ],
                 ],
               )
             ],

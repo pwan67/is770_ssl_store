@@ -164,6 +164,10 @@ class MockService {
           acquisitionDate: (data['acquisitionDate'] as Timestamp?)?.toDate() ?? DateTime.now(),
           acquisitionPrice: (data['acquisitionPrice'] ?? 0 as num).toDouble(),
           status: data['status'] ?? 'owned',
+          loanAmount: data['loanAmount'] != null ? (data['loanAmount'] as num).toDouble() : null,
+          pawnDate: (data['pawnDate'] as Timestamp?)?.toDate(),
+          dueDate: (data['dueDate'] as Timestamp?)?.toDate(),
+          interestRate: data['interestRate'] != null ? (data['interestRate'] as num).toDouble() : null,
         );
       }).toList();
     });
@@ -186,6 +190,7 @@ class MockService {
         TransactionType type = TransactionType.buy;
         if (data['type'] == 'sell') type = TransactionType.sell;
         else if (data['type'] == 'pawn') type = TransactionType.pawn;
+        else if (data['type'] == 'redeem') type = TransactionType.redeem;
 
         return GoldTransaction(
           id: doc.id,
@@ -341,15 +346,154 @@ class MockService {
         .set(globalTxDoc);
   }
 
+  Future<void> pawnAsset({
+    required GoldAsset asset,
+    required double loanAmount,
+  }) async {
+    final uid = currentUserId;
+    if (uid == null) throw Exception('User not logged in');
+
+    await Future.delayed(const Duration(seconds: 1));
+
+    // 1. Update asset status to 'pawned' and attach loan data
+    final now = DateTime.now();
+    final dueDate = now.add(const Duration(days: 30));
+    final interestRate = 0.0125; // 1.25% monthly default
+
+    await FirebaseFirestore.instance
+        .collection('users')
+        .doc(uid)
+        .collection('assets')
+        .doc(asset.id)
+        .update({
+      'status': 'pawned',
+      'loanAmount': loanAmount,
+      'pawnDate': FieldValue.serverTimestamp(),
+      'dueDate': Timestamp.fromDate(dueDate),
+      'interestRate': interestRate,
+    });
+
+    // 2. Add loan funds to wallet
+    await FirebaseFirestore.instance.collection('users').doc(uid).set({
+      'walletBalance': FieldValue.increment(loanAmount)
+    }, SetOptions(merge: true));
+
+    // 3. Create Pawn Transaction
+    final id = DateTime.now().millisecondsSinceEpoch.toString();
+    final transactionDoc = {
+      'assetId': asset.id,
+      'type': TransactionType.pawn.name,
+      'amount': loanAmount,
+      'weight': asset.weight,
+      'timestamp': FieldValue.serverTimestamp(),
+      'details': 'PAWN: ${asset.name} (${asset.weight} Baht)',
+      'userId': uid,
+      'userEmail': FirebaseAuth.instance.currentUser?.email ?? 'Unknown Email',
+    };
+
+    await FirebaseFirestore.instance
+        .collection('users')
+        .doc(uid)
+        .collection('transactions')
+        .doc('t$id')
+        .set(transactionDoc);
+
+    await FirebaseFirestore.instance
+        .collection('transactions')
+        .doc('t$id')
+        .set(transactionDoc);
+  }
+
+  Future<void> redeemAsset({
+    required GoldAsset asset,
+    required double totalOwed,
+  }) async {
+    final uid = currentUserId;
+    if (uid == null) throw Exception('User not logged in');
+
+    // 1. Check wallet balance
+    final userDoc = await FirebaseFirestore.instance.collection('users').doc(uid).get();
+    double currentBalance = (userDoc.data()?['walletBalance'] ?? 0.0).toDouble();
+
+    if (currentBalance < totalOwed) {
+      throw Exception('Insufficient funds to redeem asset');
+    }
+
+    await Future.delayed(const Duration(seconds: 1));
+
+    // 2. Clear loan fields and revert status to 'owned'
+    await FirebaseFirestore.instance
+        .collection('users')
+        .doc(uid)
+        .collection('assets')
+        .doc(asset.id)
+        .update({
+      'status': 'owned',
+      'loanAmount': FieldValue.delete(),
+      'pawnDate': FieldValue.delete(),
+      'dueDate': FieldValue.delete(),
+      'interestRate': FieldValue.delete(),
+    });
+
+    // 3. Deduct total owed from wallet
+    await FirebaseFirestore.instance.collection('users').doc(uid).update({
+      'walletBalance': FieldValue.increment(-totalOwed)
+    });
+
+    // 4. Create Redeem Transaction
+    final id = DateTime.now().millisecondsSinceEpoch.toString();
+    final transactionDoc = {
+      'assetId': asset.id,
+      'type': TransactionType.redeem.name,
+      'amount': totalOwed, // Representing cash paid
+      'weight': asset.weight,
+      'timestamp': FieldValue.serverTimestamp(),
+      'details': 'REDEEM: ${asset.name} (${asset.weight} Baht)',
+      'userId': uid,
+      'userEmail': FirebaseAuth.instance.currentUser?.email ?? 'Unknown Email',
+    };
+
+    await FirebaseFirestore.instance
+        .collection('users')
+        .doc(uid)
+        .collection('transactions')
+        .doc('t$id')
+        .set(transactionDoc);
+
+    await FirebaseFirestore.instance
+        .collection('transactions')
+        .doc('t$id')
+        .set(transactionDoc);
+  }
+
   double calculatePawnLoan(double weight, double currentBuyPrice) {
     // Standard pawn shop rule: ~85-90% of buyback value
     return (weight * currentBuyPrice) * 0.85;
   }
 
-  double calculatePawnInterest(double loanAmount, int days) {
-    // Mock interest: 1.25% per month
-    double monthlyRate = 0.0125;
-    return loanAmount * monthlyRate * (days / 30.0);
+  Map<String, double> calculatePawnOwed(double principal, DateTime pawnDate, DateTime dueDate, double monthlyRate) {
+    final now = DateTime.now();
+    
+    // Calculate standard interest
+    int daysPawned = now.difference(pawnDate).inDays;
+    if (daysPawned < 1) daysPawned = 1; // minimum 1 day interest for UI testing
+    double standardInterest = principal * monthlyRate * (daysPawned / 30.0);
+    
+    // Calculate penalty interest if overdue
+    double penaltyInterest = 0.0;
+    if (now.isAfter(dueDate)) {     
+      int daysOverdue = now.difference(dueDate).inDays;
+      // Example Penalty: 2% per month overdue
+      double penaltyRate = 0.02;
+      penaltyInterest = principal * penaltyRate * (daysOverdue / 30.0);
+    }
+    
+    return {
+      'principal': principal,
+      'standardInterest': standardInterest,
+      'penaltyInterest': penaltyInterest,
+      'totalOwed': principal + standardInterest + penaltyInterest,
+    };
   }
 
   // Live Cloud Products Stream

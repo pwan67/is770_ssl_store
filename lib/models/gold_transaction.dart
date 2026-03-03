@@ -1,4 +1,4 @@
-enum TransactionType { buy, sell, pawn }
+enum TransactionType { buy, sell, pawn, redeem }
 
 class GoldTransaction {
   final String id;

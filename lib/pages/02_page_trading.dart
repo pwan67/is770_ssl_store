@@ -401,11 +401,127 @@ class _SellTabState extends State<_SellTab> {
   }
 }
 
-// -- Pawn Tab --
-class _PawnTab extends StatelessWidget {
+class _PawnTab extends StatefulWidget {
   final MockService service;
   final GoldRate? currentRate;
   const _PawnTab({required this.service, this.currentRate});
+
+  @override
+  State<_PawnTab> createState() => _PawnTabState();
+}
+
+class _PawnTabState extends State<_PawnTab> {
+  bool _isProcessing = false;
+
+  void _showPawnConfirmation(BuildContext context, GoldAsset asset, double maxLoan) {
+    double requestedLoan = maxLoan;
+    final TextEditingController _loanController = TextEditingController(text: maxLoan.toStringAsFixed(0));
+    final String errorMsg = 'Amount must be between 1 and ${maxLoan.toStringAsFixed(0)}';
+
+    showDialog(
+      context: context,
+      barrierDismissible: !_isProcessing,
+      builder: (BuildContext context) {
+        return StatefulBuilder(
+          builder: (context, setStateDialog) {
+             bool isValid = requestedLoan > 0 && requestedLoan <= maxLoan;
+             
+             return AlertDialog(
+              title: const Text('Confirm Pawn'),
+              content: StreamBuilder<double>(
+                stream: widget.service.getWalletBalanceStream(),
+                builder: (context, snapshot) {
+                  final walletBalance = snapshot.data ?? 0.0;
+                  final newBalance = walletBalance + (isValid ? requestedLoan : 0);
+                  
+                  final dueDate = DateTime.now().add(const Duration(days: 30));
+                  final formattedDate = '${dueDate.day}/${dueDate.month}/${dueDate.year}';
+
+                  return SingleChildScrollView(
+                    child: Column(
+                      mainAxisSize: MainAxisSize.min,
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text('Asset: ${asset.name}'),
+                        Text('Weight: ${asset.weight} Baht'),
+                        const SizedBox(height: 12),
+                        const Text('Requested Loan Amount (THB):', style: TextStyle(fontWeight: FontWeight.bold)),
+                        const SizedBox(height: 8),
+                        TextField(
+                          controller: _loanController,
+                          keyboardType: const TextInputType.numberWithOptions(decimal: true),
+                          decoration: InputDecoration(
+                            border: const OutlineInputBorder(),
+                            isDense: true,
+                            errorText: !isValid ? errorMsg : null,
+                            suffixText: 'Max: ${maxLoan.toStringAsFixed(0)}',
+                            suffixStyle: const TextStyle(fontSize: 10)
+                          ),
+                          onChanged: (val) {
+                            setStateDialog(() {
+                              requestedLoan = double.tryParse(val) ?? 0.0;
+                            });
+                          },
+                        ),
+                        const SizedBox(height: 12),
+                        const Text('Estimated New Wallet Balance:', style: TextStyle(fontWeight: FontWeight.bold)),
+                        Text('฿ ${newBalance.toStringAsFixed(0)}', style: const TextStyle(color: Colors.blue, fontSize: 18, fontWeight: FontWeight.bold)),
+                        const SizedBox(height: 16),
+                        Container(
+                          padding: const EdgeInsets.all(8),
+                          color: Colors.orange[50],
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Text('Due Date: $formattedDate (30 Days)', style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 12, color: Colors.orange)),
+                              const Text('Interest rate is 1.25% per month. Late payments incur a 2% monthly penalty.', style: TextStyle(fontSize: 10, color: Colors.black87)),
+                            ],
+                          ),
+                        )
+                      ],
+                    ),
+                  );
+                }
+              ),
+              actions: [
+                TextButton(
+                  onPressed: _isProcessing ? null : () => Navigator.of(context).pop(),
+                  child: const Text('Cancel'),
+                ),
+                ElevatedButton(
+                  onPressed: (_isProcessing || !isValid) ? null : () async {
+                    setStateDialog(() => _isProcessing = true);
+                    setState(() => _isProcessing = true);
+                    
+                    try {
+                       await widget.service.pawnAsset(asset: asset, loanAmount: requestedLoan);
+                       if (mounted) {
+                          Navigator.of(context).pop();
+                          ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Asset Pawned! ฿${requestedLoan.toStringAsFixed(0)} added to Wallet.')));
+                       }
+                    } catch (e) {
+                      if (mounted) {
+                          ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Error pawning asset: $e')));
+                      }
+                    } finally {
+                       if (mounted) {
+                          setStateDialog(() => _isProcessing = false);
+                          setState(() => _isProcessing = false);
+                       }
+                    }
+                  },
+                  style: ElevatedButton.styleFrom(backgroundColor: const Color(0xFF800000)),
+                  child: _isProcessing 
+                    ? const SizedBox(width: 16, height: 16, child: CircularProgressIndicator(color: Colors.white, strokeWidth: 2))
+                    : const Text('Confirm Pawn', style: TextStyle(color: Colors.white)),
+                ),
+              ],
+            );
+          }
+        );
+      },
+    );
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -423,26 +539,57 @@ class _PawnTab extends StatelessWidget {
           ),
         ),
         Expanded(
-          child: Center(
-            child: Column(
-              mainAxisAlignment: MainAxisAlignment.center,
-              children: [
-                const Icon(Icons.camera_alt_outlined, size: 64, color: Colors.grey),
-                const SizedBox(height: 16),
-                const Text('Pawn New Item', style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
-                const Text('Bring your physical gold to our shop \nor scan your digital certificate.', textAlign: TextAlign.center),
-                const SizedBox(height: 24),
-                ElevatedButton.icon(
-                  onPressed: () {},
-                  icon: const Icon(Icons.qr_code_scanner),
-                  label: const Text('Scan QR / Upload Photo'),
-                  style: ElevatedButton.styleFrom(
-                    backgroundColor: const Color(0xFF800000),
-                    foregroundColor: Colors.white,
+          child: StreamBuilder<List<GoldAsset>>(
+            stream: widget.service.getMemberAssetsStream(),
+            builder: (context, snapshot) {
+              if (snapshot.connectionState == ConnectionState.waiting) {
+                return const Center(child: CircularProgressIndicator());
+              }
+              if (snapshot.hasError) {
+                return Center(child: Text('Error: ${snapshot.error}'));
+              }
+              
+              final allAssets = snapshot.data ?? [];
+              final ownedAssets = allAssets.where((a) => a.status == 'owned').toList();
+
+              if (ownedAssets.isEmpty) {
+                return const Center(
+                  child: Padding(
+                    padding: EdgeInsets.all(20.0),
+                    child: Text('You have no fully owned assets available to pawn.', textAlign: TextAlign.center, style: TextStyle(color: Colors.grey)),
                   ),
-                ),
-              ],
-            ),
+                );
+              }
+
+              return ListView.builder(
+                padding: const EdgeInsets.all(16),
+                itemCount: ownedAssets.length,
+                itemBuilder: (context, index) {
+                  final asset = ownedAssets[index];
+                  final currentVal = asset.weight * (widget.currentRate?.buyPrice ?? 0);
+                  final maxLoan = widget.service.calculatePawnLoan(asset.weight, widget.currentRate?.buyPrice ?? 0);
+                  
+                  return Card(
+                    margin: const EdgeInsets.only(bottom: 12),
+                    child: ListTile(
+                      leading: const CircleAvatar(backgroundColor: Color(0xFFFFF8E1), child: Icon(Icons.shield, color: Color(0xFF800000))),
+                      title: Text(asset.name),
+                      subtitle: Text('${asset.weight} Baht • Valued at ฿${currentVal.toInt()}'),
+                      trailing: Column(
+                        mainAxisAlignment: MainAxisAlignment.center,
+                        crossAxisAlignment: CrossAxisAlignment.end,
+                        children: [
+                          const Text('MAX LOAN', style: TextStyle(fontSize: 10, color: Colors.grey)),
+                          Text('฿ ${maxLoan.toStringAsFixed(0)}', 
+                            style: const TextStyle(fontWeight: FontWeight.bold, color: Colors.orange)),
+                        ],
+                      ),
+                      onTap: _isProcessing ? null : () => _showPawnConfirmation(context, asset, maxLoan),
+                    ),
+                  );
+                },
+              );
+            },
           ),
         ),
       ],

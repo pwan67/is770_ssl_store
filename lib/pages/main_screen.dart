@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import '00_page_home.dart';
 import '02_page_portfolio.dart';
+import '02_page_trading.dart';
 import '03_page_scan.dart';
 import '12_page_profile.dart'; // Ensure profile page is imported
 
@@ -16,6 +17,7 @@ class _MainScreenState extends State<MainScreen> {
 
   final List<Widget> _pages = [
     const HomePage(),
+    const TradingPage(),
     const PortfolioPage(),
     const ScanPage(),
     const ProfilePage(),
@@ -55,6 +57,10 @@ class _MainScreenState extends State<MainScreen> {
             BottomNavigationBarItem(
               icon: Icon(Icons.home),
               label: 'Home',
+            ),
+            BottomNavigationBarItem(
+              icon: Icon(Icons.show_chart),
+              label: 'Trade',
             ),
             BottomNavigationBarItem(
               icon: Icon(Icons.pie_chart), // or savings icon
