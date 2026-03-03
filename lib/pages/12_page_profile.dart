@@ -1,6 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:firebase_auth/firebase_auth.dart' hide EmailAuthProvider;
 import '../services/auth_service.dart';
+import '../services/mock_service.dart';
+import 'package:intl/intl.dart';
 import '03_page_appointment.dart';
 import '14_page_edit_profile.dart';
 import '15_page_transactions.dart';
@@ -224,19 +226,25 @@ class _ProfileMemberView extends StatelessWidget {
                   style: const TextStyle(fontSize: 24, fontWeight: FontWeight.bold, color: Colors.white),
                 ),
                 const SizedBox(height: 8),
-                Container(
-                  padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 6),
-                  decoration: BoxDecoration(
-                    color: const Color(0xFFFFD700), // Gold badge
-                    borderRadius: BorderRadius.circular(20),
-                    boxShadow: [
-                      BoxShadow(color: Colors.black.withValues(alpha: 0.2), blurRadius: 4, offset: const Offset(0, 2)),
-                    ],
-                  ),
-                  child: const Text(
-                    'GOLD TIER • 1,250 PTS',
-                    style: TextStyle(fontSize: 12, fontWeight: FontWeight.w900, color: Color(0xFF800000), letterSpacing: 0.5),
-                  ),
+                StreamBuilder<int>(
+                  stream: MockService().getRewardPointsStream(),
+                  builder: (context, snapshot) {
+                    final points = snapshot.data ?? 0;
+                    return Container(
+                      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 6),
+                      decoration: BoxDecoration(
+                        color: const Color(0xFFFFD700), // Gold badge
+                        borderRadius: BorderRadius.circular(20),
+                        boxShadow: [
+                          BoxShadow(color: Colors.black.withValues(alpha: 0.2), blurRadius: 4, offset: const Offset(0, 2)),
+                        ],
+                      ),
+                      child: Text(
+                        '${NumberFormat('#,##0').format(points)} PTS',
+                        style: const TextStyle(fontSize: 12, fontWeight: FontWeight.w900, color: Color(0xFF800000), letterSpacing: 0.5),
+                      ),
+                    );
+                  },
                 ),
                 const SizedBox(height: 30), // Padding for the overlap
               ],
