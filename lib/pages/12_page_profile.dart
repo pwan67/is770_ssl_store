@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:firebase_auth/firebase_auth.dart' hide EmailAuthProvider;
 import '../services/auth_service.dart';
+import '03_page_appointment.dart';
 
 class ProfilePage extends StatefulWidget {
   const ProfilePage({super.key});
@@ -228,6 +229,28 @@ class _ProfileMemberViewState extends State<_ProfileMemberView> {
                   padding: const EdgeInsets.symmetric(vertical: 16),
                 ),
                 child: const Text('Save Changes'),
+              ),
+              const SizedBox(height: 32),
+              const Text('Store Services', style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
+              const SizedBox(height: 16),
+              Card(
+                elevation: 0,
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(12),
+                  side: BorderSide(color: Colors.grey.shade300),
+                ),
+                child: ListTile(
+                  leading: const Icon(Icons.calendar_month, color: Color(0xFF800000)),
+                  title: const Text('My Appointments', style: TextStyle(fontWeight: FontWeight.bold)),
+                  subtitle: const Text('View your physical gold pickup schedule'),
+                  trailing: const Icon(Icons.chevron_right),
+                  onTap: () {
+                    Navigator.push(
+                      context,
+                      MaterialPageRoute(builder: (context) => const AppointmentPage()),
+                    );
+                  },
+                ),
               ),
             ],
           ),
