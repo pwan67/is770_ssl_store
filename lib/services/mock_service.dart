@@ -165,7 +165,7 @@ class MockService {
     
     final user = FirebaseAuth.instance.currentUser;
     if (user != null) {
-      await user.updateDisplayName('\$firstName \$lastName'.trim());
+      await user.updateDisplayName('$firstName $lastName'.trim());
     }
   }
 
@@ -173,8 +173,8 @@ class MockService {
     final uid = currentUserId;
     if (uid == null) throw Exception('User not logged in');
     
-    final ref = FirebaseStorage.instance.ref().child('avatars').child('\$uid.\$extension');
-    final uploadTask = await ref.putData(fileBytes, SettableMetadata(contentType: 'image/\$extension'));
+    final ref = FirebaseStorage.instance.ref().child('avatars').child('$uid.$extension');
+    final uploadTask = await ref.putData(fileBytes, SettableMetadata(contentType: 'image/$extension'));
     final url = await uploadTask.ref.getDownloadURL();
     
     await FirebaseFirestore.instance.collection('users').doc(uid).set({'photoUrl': url}, SetOptions(merge: true));
