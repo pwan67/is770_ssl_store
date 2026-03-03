@@ -8,7 +8,8 @@ import '../models/gold_transaction.dart';
 import '../models/appointment.dart';
 
 import 'package:firebase_auth/firebase_auth.dart';
-
+import 'package:firebase_storage/firebase_storage.dart';
+import 'dart:typed_data';
 class MockService {
   // Singleton pattern
   static final MockService _instance = MockService._internal();
@@ -143,6 +144,46 @@ class MockService {
     await FirebaseFirestore.instance.collection('users').doc(uid).set({
       'walletBalance': FieldValue.increment(-amount)
     }, SetOptions(merge: true));
+  }
+
+  Future<Map<String, dynamic>> getUserProfile() async {
+    final uid = currentUserId;
+    if (uid == null) throw Exception('User not logged in');
+    final doc = await FirebaseFirestore.instance.collection('users').doc(uid).get();
+    return doc.data() ?? {};
+  }
+
+  Future<void> updateUserProfile({required String firstName, required String lastName, required String phoneNumber}) async {
+    final uid = currentUserId;
+    if (uid == null) throw Exception('User not logged in');
+    final data = {
+      'firstName': firstName,
+      'lastName': lastName,
+      'phoneNumber': phoneNumber,
+    };
+    await FirebaseFirestore.instance.collection('users').doc(uid).set(data, SetOptions(merge: true));
+    
+    final user = FirebaseAuth.instance.currentUser;
+    if (user != null) {
+      await user.updateDisplayName('\$firstName \$lastName'.trim());
+    }
+  }
+
+  Future<String> uploadProfilePicture(Uint8List fileBytes, String extension) async {
+    final uid = currentUserId;
+    if (uid == null) throw Exception('User not logged in');
+    
+    final ref = FirebaseStorage.instance.ref().child('avatars').child('\$uid.\$extension');
+    final uploadTask = await ref.putData(fileBytes, SettableMetadata(contentType: 'image/\$extension'));
+    final url = await uploadTask.ref.getDownloadURL();
+    
+    await FirebaseFirestore.instance.collection('users').doc(uid).set({'photoUrl': url}, SetOptions(merge: true));
+    
+    final user = FirebaseAuth.instance.currentUser;
+    if (user != null) {
+      await user.updatePhotoURL(url);
+    }
+    return url;
   }
 
   Stream<List<GoldAsset>> getMemberAssetsStream() {

@@ -2,6 +2,8 @@ import 'package:flutter/material.dart';
 import 'package:firebase_auth/firebase_auth.dart' hide EmailAuthProvider;
 import '../services/auth_service.dart';
 import '03_page_appointment.dart';
+import '14_page_edit_profile.dart';
+import '15_page_transactions.dart';
 
 class ProfilePage extends StatefulWidget {
   const ProfilePage({super.key});
@@ -191,20 +193,28 @@ class _ProfileMemberView extends StatelessWidget {
               mainAxisAlignment: MainAxisAlignment.center,
               children: [
                 const SizedBox(height: 20),
-                Container(
-                  decoration: BoxDecoration(
-                    shape: BoxShape.circle,
-                    border: Border.all(color: const Color(0xFFFFD700), width: 4), // Gold Border
-                    boxShadow: [
-                      BoxShadow(color: Colors.black.withValues(alpha: 0.3), blurRadius: 10, offset: const Offset(0, 5)),
-                    ],
-                  ),
-                  child: CircleAvatar(
-                    radius: 50,
-                    backgroundColor: Colors.white,
-                    child: Text(
-                      initial,
-                      style: const TextStyle(fontSize: 40, fontWeight: FontWeight.bold, color: Color(0xFF800000)),
+                GestureDetector(
+                  onTap: () {
+                    Navigator.push(context, MaterialPageRoute(builder: (_) => const EditProfilePage()));
+                  },
+                  child: Container(
+                    decoration: BoxDecoration(
+                      shape: BoxShape.circle,
+                      border: Border.all(color: const Color(0xFFFFD700), width: 4), // Gold Border
+                      boxShadow: [
+                        BoxShadow(color: Colors.black.withValues(alpha: 0.3), blurRadius: 10, offset: const Offset(0, 5)),
+                      ],
+                    ),
+                    child: CircleAvatar(
+                      radius: 50,
+                      backgroundColor: Colors.white,
+                      backgroundImage: user.photoURL != null ? NetworkImage(user.photoURL!) : null,
+                      child: user.photoURL == null 
+                        ? Text(
+                            initial,
+                            style: const TextStyle(fontSize: 40, fontWeight: FontWeight.bold, color: Color(0xFF800000)),
+                          )
+                        : null,
                     ),
                   ),
                 ),
@@ -253,6 +263,15 @@ class _ProfileMemberView extends StatelessWidget {
           crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
              _buildSectionTitle('Account Details'),
+            _buildGroupedList([
+              _buildListTile(
+                icon: Icons.person_outline,
+                title: 'Edit Profile',
+                subtitle: 'Update your name, photo, and phone number',
+                onTap: () => Navigator.push(context, MaterialPageRoute(builder: (_) => const EditProfilePage())),
+              ),
+            ]),
+            const SizedBox(height: 16),
             _buildInfoCard(
               icon: Icons.email,
               title: 'Email Address',
@@ -274,7 +293,7 @@ class _ProfileMemberView extends StatelessWidget {
                 title: 'Transaction History', 
                 subtitle: 'View your past buys, sells, and pawns',
                 onTap: () {
-                   ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Transaction History coming soon.')));
+                   Navigator.push(context, MaterialPageRoute(builder: (_) => const TransactionHistoryPage()));
                 },
               ),
             ]),
