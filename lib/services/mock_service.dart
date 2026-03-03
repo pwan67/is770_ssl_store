@@ -504,13 +504,15 @@ class MockService {
     if (uid == null) return Stream.value([]);
 
     return FirebaseFirestore.instance
-        .collection('users')
-        .doc(uid)
         .collection('appointments')
-        .orderBy('date', descending: false)
+        .where('userId', isEqualTo: uid)
+        // Removed orderBy to prevent composite index requirements
         .snapshots()
         .map((snapshot) {
-      return snapshot.docs.map((doc) => Appointment.fromMap(doc.id, doc.data())).toList();
+      final list = snapshot.docs.map((doc) => Appointment.fromMap(doc.id, doc.data())).toList();
+      // Sort locally
+      list.sort((a, b) => a.date.compareTo(b.date));
+      return list;
     });
   }
 
@@ -519,13 +521,15 @@ class MockService {
     final endOfDay = DateTime(date.year, date.month, date.day, 23, 59, 59).toIso8601String();
 
     final snapshot = await FirebaseFirestore.instance
-        .collectionGroup('appointments')
+        .collection('appointments')
         .where('date', isGreaterThanOrEqualTo: startOfDay)
         .where('date', isLessThanOrEqualTo: endOfDay)
-        .where('status', isEqualTo: 'scheduled') // only count active ones
         .get();
 
-    return snapshot.docs.map((doc) => Appointment.fromMap(doc.id, doc.data())).toList();
+    return snapshot.docs
+        .map((doc) => Appointment.fromMap(doc.id, doc.data()))
+        .where((apt) => apt.status == 'scheduled')
+        .toList();
   }
 
   Future<void> createAppointment({
@@ -541,12 +545,15 @@ class MockService {
     final isoDateStart = appointmentDate.toIso8601String();
     // In our 30-min slot logic, exact match on the time is enough
     final existingParams = await FirebaseFirestore.instance
-        .collectionGroup('appointments')
+        .collection('appointments')
         .where('date', isEqualTo: isoDateStart)
-        .where('status', isEqualTo: 'scheduled')
         .get();
         
-    if (existingParams.docs.length >= 2) {
+    final scheduledBookingsCount = existingParams.docs
+        .where((d) => d.data()['status'] == 'scheduled')
+        .length;
+        
+    if (scheduledBookingsCount >= 2) {
       throw Exception('This time slot has reached maximum capacity.');
     }
 
@@ -562,8 +569,6 @@ class MockService {
     );
 
     await FirebaseFirestore.instance
-        .collection('users')
-        .doc(uid)
         .collection('appointments')
         .doc('apt$id')
         .set(appointment.toMap());
