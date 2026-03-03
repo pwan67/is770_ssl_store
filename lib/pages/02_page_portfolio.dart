@@ -198,50 +198,124 @@ class _SectionHeader extends StatelessWidget {
   }
 }
 
-class _AssetCard extends StatelessWidget {
+class _AssetCard extends StatefulWidget {
   final GoldAsset asset;
   final GoldRate? currentRate;
   const _AssetCard({required this.asset, this.currentRate});
 
   @override
+  State<_AssetCard> createState() => _AssetCardState();
+}
+
+class _AssetCardState extends State<_AssetCard> {
+  final MockService _service = MockService();
+  bool _isProcessing = false;
+
+  void _showSellConfirmation(BuildContext context, double estimatedValue) {
+    showDialog(
+      context: context,
+      barrierDismissible: !_isProcessing,
+      builder: (BuildContext context) {
+        return StatefulBuilder(
+          builder: (context, setStateDialog) {
+             return AlertDialog(
+              title: const Text('Confirm Sale'),
+              content: Column(
+                mainAxisSize: MainAxisSize.min,
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text('Asset: ${widget.asset.name}'),
+                  Text('Weight: ${widget.asset.weight} Baht'),
+                  const SizedBox(height: 12),
+                  const Text('Estimated Value:', style: TextStyle(fontWeight: FontWeight.bold)),
+                  Text('฿ ${estimatedValue.toStringAsFixed(0)}', style: const TextStyle(color: Colors.green, fontSize: 20, fontWeight: FontWeight.bold)),
+                  const SizedBox(height: 12),
+                  const Text('Are you sure you want to sell this asset? This action cannot be undone.', style: TextStyle(fontSize: 12, color: Colors.grey)),
+                ],
+              ),
+              actions: [
+                TextButton(
+                  onPressed: _isProcessing ? null : () => Navigator.of(context).pop(),
+                  child: const Text('Cancel'),
+                ),
+                ElevatedButton(
+                  onPressed: _isProcessing ? null : () async {
+                    setStateDialog(() => _isProcessing = true);
+                    setState(() => _isProcessing = true);
+                    
+                    try {
+                       await _service.sellAsset(asset: widget.asset, sellPrice: estimatedValue);
+                       if (mounted) {
+                          Navigator.of(context).pop(); // Close dialog
+                          ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Asset Sold Successfully!')));
+                       }
+                    } catch (e) {
+                      if (mounted) {
+                          ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Error selling asset: $e')));
+                      }
+                    } finally {
+                       if (mounted) {
+                          setStateDialog(() => _isProcessing = false);
+                          setState(() => _isProcessing = false);
+                       }
+                    }
+                  },
+                  style: ElevatedButton.styleFrom(backgroundColor: Colors.red),
+                  child: _isProcessing 
+                    ? const SizedBox(width: 16, height: 16, child: CircularProgressIndicator(color: Colors.white, strokeWidth: 2))
+                    : const Text('Confirm Sell', style: TextStyle(color: Colors.white)),
+                ),
+              ],
+            );
+          }
+        );
+      },
+    );
+  }
+
+  @override
   Widget build(BuildContext context) {
-    double currentVal = asset.weight * (currentRate?.buyPrice ?? 0);
-    double profit = currentVal - asset.acquisitionPrice;
+    double currentVal = widget.asset.weight * (widget.currentRate?.buyPrice ?? 0);
+    double profit = currentVal - widget.asset.acquisitionPrice;
 
     return Card(
       margin: const EdgeInsets.only(bottom: 12),
       shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-      child: Padding(
-        padding: const EdgeInsets.all(16.0),
-        child: Row(
-          children: [
-            Container(
-              padding: const EdgeInsets.all(10),
-              decoration: BoxDecoration(color: const Color(0xFFFFF8E1), borderRadius: BorderRadius.circular(10)),
-              child: const Icon(Icons.workspace_premium, color: Color(0xFF800000)),
-            ),
-            const SizedBox(width: 16),
-            Expanded(
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text(asset.name, style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 16)),
-                  Text('${asset.weight} Baht • Acquired ฿ ${asset.acquisitionPrice.toInt()}', 
-                    style: const TextStyle(fontSize: 12, color: Colors.grey)),
-                ],
+      child: InkWell(
+        onTap: _isProcessing ? null : () => _showSellConfirmation(context, currentVal),
+        borderRadius: BorderRadius.circular(12),
+        child: Padding(
+          padding: const EdgeInsets.all(16.0),
+          child: Row(
+            children: [
+              Container(
+                padding: const EdgeInsets.all(10),
+                decoration: BoxDecoration(color: const Color(0xFFFFF8E1), borderRadius: BorderRadius.circular(10)),
+                child: const Icon(Icons.workspace_premium, color: Color(0xFF800000)),
               ),
-            ),
-            Column(
-              crossAxisAlignment: CrossAxisAlignment.end,
-              children: [
-                Text('฿ ${currentVal.toInt()}', style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 16)),
-                Text(
-                  '${profit >= 0 ? "+" : ""}฿ ${profit.toInt()}', 
-                  style: TextStyle(fontSize: 12, color: profit >= 0 ? Colors.green : Colors.red, fontWeight: FontWeight.bold)
+              const SizedBox(width: 16),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(widget.asset.name, style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 16)),
+                    Text('${widget.asset.weight} Baht • Acquired ฿ ${widget.asset.acquisitionPrice.toInt()}', 
+                      style: const TextStyle(fontSize: 12, color: Colors.grey)),
+                  ],
                 ),
-              ],
-            )
-          ],
+              ),
+              Column(
+                crossAxisAlignment: CrossAxisAlignment.end,
+                children: [
+                  Text('฿ ${currentVal.toInt()}', style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 16)),
+                  Text(
+                    '${profit >= 0 ? "+" : ""}฿ ${profit.toInt()}', 
+                    style: TextStyle(fontSize: 12, color: profit >= 0 ? Colors.green : Colors.red, fontWeight: FontWeight.bold)
+                  ),
+                ],
+              )
+            ],
+          ),
         ),
       ),
     );
