@@ -247,6 +247,18 @@ class MockService {
     });
   }
 
+  Stream<int> getRewardPointsStream() {
+    return getTransactionHistoryStream().map((transactions) {
+      double totalSpend = 0.0;
+      for (var tx in transactions) {
+        if (tx.type == TransactionType.buy) {
+          totalSpend += tx.amount;
+        }
+      }
+      return totalSpend ~/ 1000;
+    });
+  }
+
   Future<void> createTransaction({
     required String assetName,
     required double weight,
