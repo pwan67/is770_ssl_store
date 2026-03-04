@@ -6,6 +6,8 @@ import 'package:intl/intl.dart';
 import '03_page_appointment.dart';
 import '14_page_edit_profile.dart';
 import '15_page_transactions.dart';
+import '18_page_security_settings.dart';
+import '19_page_help_support.dart';
 
 class ProfilePage extends StatefulWidget {
   const ProfilePage({super.key});
@@ -313,7 +315,7 @@ class _ProfileMemberView extends StatelessWidget {
                 icon: Icons.lock_outline, 
                 title: 'Security Settings', 
                 onTap: () {
-                   ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Security Settings coming soon.')));
+                   Navigator.push(context, MaterialPageRoute(builder: (_) => const SecuritySettingsPage()));
                 },
               ),
               _buildDivider(),
@@ -321,7 +323,7 @@ class _ProfileMemberView extends StatelessWidget {
                 icon: Icons.help_outline, 
                 title: 'Help & Support', 
                 onTap: () {
-                   ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Support Center coming soon.')));
+                   Navigator.push(context, MaterialPageRoute(builder: (_) => const HelpSupportPage()));
                 },
               ),
             ]),

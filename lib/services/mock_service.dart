@@ -7,6 +7,7 @@ import '../models/gold_asset.dart';
 import '../models/gold_transaction.dart';
 import '../models/appointment.dart';
 import '../models/notification_item.dart';
+import '../models/gold_savings.dart';
 
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:firebase_storage/firebase_storage.dart';
@@ -20,34 +21,122 @@ class MockService {
   // Get current user ID
   String? get currentUserId => FirebaseAuth.instance.currentUser?.uid;
 
-  // Mock News Data
-  List<NewsItem> getNews() {
-    return [
-      NewsItem(
-        id: '1',
-        title: 'Why Gold is the Best Safe Haven Asset?',
-        summary: 'In times of economic uncertainty, gold is the answer. Maintain your wealth value...',
-        imageUrl: 'https://via.placeholder.com/150x150/FFD700/000000?text=Safe+Haven',
-        date: DateTime.now().subtract(const Duration(days: 1)),
-        content: 'Full article content about safe haven...',
-      ),
-      NewsItem(
-        id: '2',
-        title: 'Gold Price Analysis: Upward Trend continues',
-        summary: 'Experts predict continued growth for gold prices this quarter due to global factors.',
-        imageUrl: 'https://via.placeholder.com/150x150/800000/FFFFFF?text=Price+Up',
-        date: DateTime.now().subtract(const Duration(days: 3)),
-        content: 'Full analysis content...',
-      ),
-      NewsItem(
-        id: '3',
-        title: 'Understanding 96.5% vs 99.99% Gold',
-        summary: 'What is the difference and which one is right for investment? Let us explain.',
-        imageUrl: 'https://via.placeholder.com/150x150/FFA000/000000?text=Gold+Standard',
-        date: DateTime.now().subtract(const Duration(days: 5)),
-        content: 'Full educational content...',
-      ),
+  Future<void> _generateInitialNews() async {
+    final batch = FirebaseFirestore.instance.batch();
+    final newsList = [
+      {
+        'title': 'Why Gold is the Best Safe Haven Asset?',
+        'summary': 'In times of economic uncertainty, gold is the answer. Maintain your wealth value...',
+        'imageUrl': 'https://via.placeholder.com/150x150/FFD700/000000?text=Safe+Haven',
+        'date': Timestamp.fromDate(DateTime.now().subtract(const Duration(days: 1))),
+        'content': 'Full article content about safe haven...',
+      },
+      {
+        'title': 'Gold Price Analysis: Upward Trend continues',
+        'summary': 'Experts predict continued growth for gold prices this quarter due to global factors.',
+        'imageUrl': 'https://via.placeholder.com/150x150/800000/FFFFFF?text=Price+Up',
+        'date': Timestamp.fromDate(DateTime.now().subtract(const Duration(days: 3))),
+        'content': 'Full analysis content...',
+      },
+      {
+        'title': 'Understanding 96.5% vs 99.99% Gold',
+        'summary': 'What is the difference and which one is right for investment? Let us explain.',
+        'imageUrl': 'https://via.placeholder.com/150x150/FFA000/000000?text=Gold+Standard',
+        'date': Timestamp.fromDate(DateTime.now().subtract(const Duration(days: 5))),
+        'content': 'Full educational content...',
+      },
     ];
+
+    for (int i = 0; i < newsList.length; i++) {
+      final docRef = FirebaseFirestore.instance.collection('news').doc('news_$i');
+      batch.set(docRef, newsList[i]);
+    }
+    await batch.commit();
+  }
+
+  // Live Cloud News Stream
+  Stream<List<NewsItem>> getNewsStream() {
+    final collection = FirebaseFirestore.instance.collection('news');
+    
+    // Auto-generate if empty
+    collection.limit(1).get().then((snapshot) {
+      if (snapshot.docs.isEmpty) {
+        _generateInitialNews();
+      }
+    });
+
+    return collection
+        .orderBy('date', descending: true)
+        .snapshots()
+        .map((snapshot) {
+      return snapshot.docs.map((doc) {
+        final data = doc.data();
+        return NewsItem(
+          id: doc.id,
+          title: data['title'] ?? 'No Title',
+          summary: data['summary'] ?? '',
+          imageUrl: data['imageUrl'] ?? 'https://via.placeholder.com/150x150',
+          date: (data['date'] as Timestamp?)?.toDate() ?? DateTime.now(),
+          content: data['content'] ?? '',
+        );
+      }).toList();
+    });
+  }
+
+  // Live Cloud Promotions Stream
+  Future<void> _generateInitialPromotions() async {
+    final batch = FirebaseFirestore.instance.batch();
+    final promos = [
+      {
+        'title': '50% Off Labor Fee\nApp Launch Special',
+        'color': 0xFF800000,
+        'textColor': 0xFFFFFFFF,
+        'image': 'https://via.placeholder.com/600x200/800000/FFFFFF?text=50%25+OFF',
+      },
+      {
+        'title': 'Golden Dragon Collection\nLunar New Year',
+        'color': 0xFFFFD700,
+        'textColor': 0xFF000000,
+        'image': 'https://via.placeholder.com/600x200/FFD700/000000?text=Dragon+Collection',
+      },
+      {
+        'title': 'Easy Gold Savings\nStart at 100 THB',
+        'color': 0xFF1E88E5,
+        'textColor': 0xFFFFFFFF,
+        'image': 'https://via.placeholder.com/600x200/1E88E5/FFFFFF?text=Saving+Plan',
+      },
+    ];
+    
+    for (int i = 0; i < promos.length; i++) {
+      final docRef = FirebaseFirestore.instance.collection('promotions').doc('promo_$i');
+      batch.set(docRef, promos[i]);
+    }
+    await batch.commit();
+  }
+
+  // Live Cloud Promotions Stream
+  Stream<List<Map<String, dynamic>>> getPromotionsStream() {
+    final collection = FirebaseFirestore.instance.collection('promotions');
+    
+    // Auto-generate if empty
+    collection.limit(1).get().then((snapshot) {
+      if (snapshot.docs.isEmpty) {
+        _generateInitialPromotions();
+      }
+    });
+
+    return collection.snapshots().map((snapshot) {
+      return snapshot.docs.map((doc) {
+        final data = doc.data();
+        return {
+          'id': doc.id,
+          'title': data['title'] ?? '',
+          'color': data['color'] ?? 0xFF800000,
+          'textColor': data['textColor'] ?? 0xFFFFFFFF,
+          'image': data['image'],
+        };
+      }).toList();
+    });
   }
 
   // Live Cloud Gold Rate Stream
@@ -798,5 +887,210 @@ class MockService {
       p.name.toLowerCase().contains(query.toLowerCase()) ||
       p.category.toLowerCase().contains(query.toLowerCase())
     ).toList();
+  }
+
+  // ==== Gold Savings (ออมทอง) ====
+
+  Stream<GoldSavingsAccount> getGoldSavingsAccountStream() {
+    final uid = currentUserId;
+    if (uid == null) {
+      return Stream.value(GoldSavingsAccount(totalWeightSaved: 0.0, totalAmountInvested: 0.0, lastUpdated: DateTime.now()));
+    }
+
+    return FirebaseFirestore.instance
+        .collection('users')
+        .doc(uid)
+        .collection('savings')
+        .doc('account')
+        .snapshots()
+        .map((snapshot) {
+      if (!snapshot.exists || snapshot.data() == null) {
+        return GoldSavingsAccount(totalWeightSaved: 0.0, totalAmountInvested: 0.0, lastUpdated: DateTime.now());
+      }
+      return GoldSavingsAccount.fromMap(snapshot.data()!);
+    });
+  }
+
+  Stream<List<GoldSavingsTransaction>> getGoldSavingsTransactionsStream() {
+    final uid = currentUserId;
+    if (uid == null) return Stream.value([]);
+
+    return FirebaseFirestore.instance
+        .collection('users')
+        .doc(uid)
+        .collection('savings')
+        .doc('account')
+        .collection('transactions')
+        .orderBy('timestamp', descending: true)
+        .snapshots()
+        .map((snapshot) {
+      return snapshot.docs.map((doc) => GoldSavingsTransaction.fromMap(doc.id, doc.data())).toList();
+    });
+  }
+
+  Future<void> depositToGoldSavings(double amountInTHB, double currentBuyPricePerBaht) async {
+    final uid = currentUserId;
+    if (uid == null) throw Exception('User not logged in');
+
+    await Future.delayed(const Duration(seconds: 1)); // Network simulation
+
+    // 1. Check wallet balance
+    final userDoc = await FirebaseFirestore.instance.collection('users').doc(uid).get();
+    final currentBalance = (userDoc.data()?['walletBalance'] ?? 0.0 as num).toDouble();
+
+    if (currentBalance < amountInTHB) {
+      throw Exception('Insufficient wallet balance. Please add funds first.');
+    }
+
+    // 2. Calculate fractional weight gained
+    final weightGained = amountInTHB / currentBuyPricePerBaht;
+
+    final batch = FirebaseFirestore.instance.batch();
+
+    // 3. Deduct THB from wallet
+    final userRef = FirebaseFirestore.instance.collection('users').doc(uid);
+    batch.update(userRef, {
+      'walletBalance': FieldValue.increment(-amountInTHB),
+    });
+
+    // 4. Update the aggregate savings account
+    final savingsRef = userRef.collection('savings').doc('account');
+    batch.set(savingsRef, {
+      'totalWeightSaved': FieldValue.increment(weightGained),
+      'totalAmountInvested': FieldValue.increment(amountInTHB),
+      'lastUpdated': FieldValue.serverTimestamp(),
+    }, SetOptions(merge: true));
+
+    // 5. Create the transaction record
+    final txId = DateTime.now().millisecondsSinceEpoch.toString();
+    final txRef = savingsRef.collection('transactions').doc('stx_$txId');
+    final stx = GoldSavingsTransaction(
+      id: txId,
+      amountInvested: amountInTHB,
+      weightGained: weightGained,
+      buyPriceAtTransaction: currentBuyPricePerBaht,
+      timestamp: DateTime.now(),
+    );
+    batch.set(txRef, stx.toMap());
+
+    // 6. Add global transaction record
+    final globalTxDoc = {
+      'assetId': 'savings',
+      'type': TransactionType.buy.name, // Using 'buy' for simplicity in history
+      'amount': amountInTHB,
+      'weight': weightGained,
+      'timestamp': FieldValue.serverTimestamp(),
+      'details': 'SAVINGS: Deposited ฿${amountInTHB.toStringAsFixed(0)}',
+      'userId': uid,
+      'userEmail': FirebaseAuth.instance.currentUser?.email ?? 'Unknown Email',
+    };
+    
+    final userTxRef = userRef.collection('transactions').doc('t$txId');
+    batch.set(userTxRef, globalTxDoc);
+    
+    final globalTransactionsRef = FirebaseFirestore.instance.collection('transactions').doc('t$txId');
+    batch.set(globalTransactionsRef, globalTxDoc);
+
+    // 7. Add a notification
+    final notifId = DateTime.now().millisecondsSinceEpoch.toString();
+    final notifRef = userRef.collection('notifications').doc('n_$notifId');
+    final notif = NotificationItem(
+      id: notifId,
+      title: 'Gold Savings Deposit',
+      message: 'Successfully deposited ฿${amountInTHB.toStringAsFixed(2)} toward your Gold Savings. Gained ${weightGained.toStringAsFixed(4)} Baht.',
+      type: 'savings',
+      timestamp: DateTime.now(),
+      isRead: false,
+    );
+    batch.set(notifRef, notif.toMap());
+
+    await batch.commit();
+  }
+
+  Future<void> sellFromGoldSavings(double weightToSell, double currentSellPricePerBaht) async {
+    final uid = currentUserId;
+    if (uid == null) throw Exception('User not logged in');
+
+    await Future.delayed(const Duration(seconds: 1)); // Network simulation
+
+    // 1. Check if user has enough saved gold weight
+    final savingsDoc = await FirebaseFirestore.instance.collection('users').doc(uid).collection('savings').doc('account').get();
+    final currentWeight = (savingsDoc.data()?['totalWeightSaved'] ?? 0.0 as num).toDouble();
+
+    if (currentWeight < weightToSell) {
+      throw Exception('Insufficient gold weight in your savings.');
+    }
+
+    // 2. Calculate cash returned
+    final amountInTHB = weightToSell * currentSellPricePerBaht;
+
+    final batch = FirebaseFirestore.instance.batch();
+
+    // 3. Add THB back to wallet
+    final userRef = FirebaseFirestore.instance.collection('users').doc(uid);
+    batch.update(userRef, {
+      'walletBalance': FieldValue.increment(amountInTHB),
+    });
+
+    // 4. Update the aggregate savings account (deduct weight, and optionally adjust total invested)
+    // We adjust total amount invested proportionally down
+    double proportionSold = weightToSell / currentWeight;
+    double currentInvested = (savingsDoc.data()?['totalAmountInvested'] ?? 0.0 as num).toDouble();
+    double investedToDeduct = proportionSold * currentInvested;
+
+    final savingsRef = userRef.collection('savings').doc('account');
+    batch.set(savingsRef, {
+      'totalWeightSaved': FieldValue.increment(-weightToSell),
+      'totalAmountInvested': FieldValue.increment(-investedToDeduct),
+      'lastUpdated': FieldValue.serverTimestamp(),
+    }, SetOptions(merge: true));
+
+    // 5. Create the transaction record
+    final txId = DateTime.now().millisecondsSinceEpoch.toString();
+    final txRef = savingsRef.collection('transactions').doc('stx_$txId');
+    
+    // We can reuse the same model, but we make amountInvested negative to indicate cash returned
+    final stx = GoldSavingsTransaction(
+      id: txId,
+      amountInvested: -amountInTHB, 
+      weightGained: -weightToSell,
+      buyPriceAtTransaction: currentSellPricePerBaht, // Store the price they sold at
+      timestamp: DateTime.now(),
+    );
+    batch.set(txRef, stx.toMap());
+
+    // 6. Add global transaction record
+    final amountAbs = amountInTHB.abs();
+    final globalTxDoc = {
+      'assetId': 'savings',
+      'type': TransactionType.sell.name, // Using 'sell' for history
+      'amount': amountAbs,
+      'weight': weightToSell,
+      'timestamp': FieldValue.serverTimestamp(),
+      'details': 'SAVINGS: Sold ${weightToSell.toStringAsFixed(4)} Baht',
+      'userId': uid,
+      'userEmail': FirebaseAuth.instance.currentUser?.email ?? 'Unknown Email',
+    };
+
+    final userTxRef = userRef.collection('transactions').doc('t$txId');
+    batch.set(userTxRef, globalTxDoc);
+    
+    final globalTransactionsRef = FirebaseFirestore.instance.collection('transactions').doc('t$txId');
+    batch.set(globalTransactionsRef, globalTxDoc);
+
+    // 7. Add a notification
+    final notifId = DateTime.now().millisecondsSinceEpoch.toString();
+    final notifRef = userRef.collection('notifications').doc('n_$notifId');
+    final notif = NotificationItem(
+      id: notifId,
+      title: 'Gold Savings Sold',
+      message: 'Successfully sold ${weightToSell.toStringAsFixed(4)} Baht of saved gold. You received ฿${amountInTHB.toStringAsFixed(2)} back into your wallet.',
+      type: 'savings',
+      timestamp: DateTime.now(),
+      isRead: false,
+    );
+    batch.set(notifRef, notif.toMap());
+
+    await batch.commit();
   }
 }

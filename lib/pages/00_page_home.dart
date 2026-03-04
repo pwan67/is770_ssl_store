@@ -11,6 +11,7 @@ import '13_page_inquiry.dart';
 import '02_page_trading.dart';
 import '16_page_notifications.dart';
 import '../models/notification_item.dart';
+import '20_page_gold_savings.dart';
 
 class HomePage extends StatefulWidget {
   // Make the page is interactive
@@ -23,14 +24,12 @@ class HomePage extends StatefulWidget {
 class _HomePageState extends State<HomePage> {
   final MockService _service = MockService(); // pull mock up data
   late Stream<GoldRate> _goldRateStream;
-  List<NewsItem> _newsList = [];
 
   @override
   void initState() {
     // load data for home page when 1st open
     super.initState();
     _goldRateStream = _service.getGoldRateStream();
-    _newsList = _service.getNews();
   }
 
   void _navigateTo(Widget page) {
@@ -63,11 +62,11 @@ class _HomePageState extends State<HomePage> {
         'iconColor': const Color(0xFFF57C00),
       },
       {
-        'title': 'Inquiry\nสอบถาม/นัดหมาย',
-        'icon': Icons.chat_bubble_outline,
-        'page': const InquiryPage(),
-        'color': const Color(0xFFF3E5F5),
-        'iconColor': const Color(0xFF7B1FA2),
+        'title': 'Gold Savings\nออมทอง',
+        'icon': Icons.savings_outlined,
+        'page': const GoldSavingsPage(),
+        'color': const Color(0xFFF3E5F5), // Light Purple
+        'iconColor': const Color(0xFF8E24AA), // Deep Purple
       },
     ];
 
@@ -163,18 +162,15 @@ class _HomePageState extends State<HomePage> {
               ),
               const SizedBox(height: 12),
 
-              GridView.builder(
+              ListView.separated(
                 shrinkWrap: true, // Important for SingleChildScrollView
                 physics: const NeverScrollableScrollPhysics(),
                 itemCount: menuItems.length,
-                gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
-                  crossAxisCount: 2, // better fit for mobile UI
-                  mainAxisSpacing: 16,
-                  crossAxisSpacing: 16,
-                  childAspectRatio: 1.1,
-                ),
+                separatorBuilder: (context, index) => const SizedBox(height: 16),
                 itemBuilder: (context, index) {
                   final item = menuItems[index];
+                  final titleParts = (item['title'] as String).split('\n');
+                  
                   return InkWell(
                     borderRadius: BorderRadius.circular(20),
                     onTap: () {
@@ -194,6 +190,7 @@ class _HomePageState extends State<HomePage> {
                       }
                     },
                     child: Container(
+                      padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 16),
                       decoration: BoxDecoration(
                         color: Colors.white,
                         borderRadius: BorderRadius.circular(20),
@@ -208,8 +205,7 @@ class _HomePageState extends State<HomePage> {
                           ),
                         ],
                       ),
-                      child: Column(
-                        mainAxisAlignment: MainAxisAlignment.center,
+                      child: Row(
                         children: [
                           Container(
                             padding: const EdgeInsets.all(12),
@@ -219,19 +215,40 @@ class _HomePageState extends State<HomePage> {
                             ),
                             child: Icon(
                               item['icon'] as IconData,
-                              size: 32,
+                              size: 28,
                               color: item['iconColor'] as Color? ?? const Color(0xFF800000),
                             ),
                           ),
-                          const SizedBox(height: 12),
-                          Text(
-                            item['title'] as String,
-                            textAlign: TextAlign.center,
-                            style: const TextStyle(
-                              fontWeight: FontWeight.bold,
-                              fontSize: 14,
-                              color: Color(0xFF4A4A4A),
+                          const SizedBox(width: 20),
+                          Expanded(
+                            child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                Text(
+                                  titleParts[0],
+                                  style: const TextStyle(
+                                    fontWeight: FontWeight.bold,
+                                    fontSize: 16,
+                                    color: Color(0xFF800000),
+                                  ),
+                                ),
+                                if (titleParts.length > 1) ...[
+                                  const SizedBox(height: 4),
+                                  Text(
+                                    titleParts[1],
+                                    style: const TextStyle(
+                                      fontSize: 14,
+                                      color: Color(0xFF4A4A4A),
+                                    ),
+                                  ),
+                                ]
+                              ],
                             ),
+                          ),
+                          const Icon(
+                            Icons.arrow_forward_ios,
+                            size: 16,
+                            color: Colors.grey,
                           ),
                         ],
                       ),
@@ -255,19 +272,36 @@ class _HomePageState extends State<HomePage> {
               ),
               const SizedBox(height: 12),
 
-              ListView.builder(
-                shrinkWrap: true,
-                physics: const NeverScrollableScrollPhysics(),
-                itemCount: _newsList.length,
-                itemBuilder: (context, index) {
-                  return NewsCard(
-                    newsItem:
-                        _newsList[index], // Lookup news from _newslist to create card
-                    onTap: () {
-                      ScaffoldMessenger.of(context).showSnackBar(
-                        SnackBar(
-                          content: Text('Reading: ${_newsList[index].title}'),
-                        ), // when push, it shows what you are reading
+              StreamBuilder<List<NewsItem>>(
+                stream: _service.getNewsStream(),
+                builder: (context, snapshot) {
+                  if (!snapshot.hasData) {
+                    return const Center(child: CircularProgressIndicator());
+                  }
+                  
+                  final newsList = snapshot.data!;
+                  
+                  if (newsList.isEmpty) {
+                    return const Padding(
+                      padding: EdgeInsets.all(16.0),
+                      child: Text('No news available at the moment.'),
+                    );
+                  }
+
+                  return ListView.builder(
+                    shrinkWrap: true,
+                    physics: const NeverScrollableScrollPhysics(),
+                    itemCount: newsList.length,
+                    itemBuilder: (context, index) {
+                      return NewsCard(
+                        newsItem: newsList[index], 
+                        onTap: () {
+                          ScaffoldMessenger.of(context).showSnackBar(
+                            SnackBar(
+                              content: Text('Reading: ${newsList[index].title}'),
+                            ), 
+                          );
+                        },
                       );
                     },
                   );
@@ -322,106 +356,108 @@ class _PromotionCarousel extends StatefulWidget {
 class _PromotionCarouselState extends State<_PromotionCarousel> {
   final PageController _pageController = PageController();
   int _currentPage = 0;
-
-  final List<Map<String, dynamic>> _promotions = [
-    {
-      'title': '50% Off Labor Fee\nApp Launch Special',
-      'color': const Color(0xFF800000), // Deep Red
-      'textColor': Colors.white,
-      'image':
-          'https://via.placeholder.com/600x200/800000/FFFFFF?text=50%25+OFF',
-    },
-    {
-      'title': 'Golden Dragon Collection\nLunar New Year',
-      'color': const Color(0xFFFFD700), // Gold
-      'textColor': Colors.black,
-      'image':
-          'https://via.placeholder.com/600x200/FFD700/000000?text=Dragon+Collection',
-    },
-    {
-      'title': 'Easy Gold Savings\nStart at 100 THB',
-      'color': const Color(0xFF1E88E5), // Blue
-      'textColor': Colors.white,
-      'image':
-          'https://via.placeholder.com/600x200/1E88E5/FFFFFF?text=Saving+Plan',
-    },
-  ];
+  final MockService _service = MockService();
 
   @override
   Widget build(BuildContext context) {
-    return Column(
-      children: [
-        Expanded(
-          child: PageView.builder(
-            controller:
-                _pageController, // create slide based on #promotion, change current location
-            itemCount: _promotions.length,
-            onPageChanged: (index) {
-              setState(() {
-                _currentPage = index;
-              });
-            },
-            itemBuilder: (context, index) {
-              final promo = _promotions[index];
-              return Container(
-                margin: const EdgeInsets.symmetric(horizontal: 4),
-                decoration: BoxDecoration(
-                  borderRadius: BorderRadius.circular(12),
-                  color: promo['color'],
-                  image: promo['image'] != null
-                      ? DecorationImage(
-                          image: NetworkImage(promo['image']),
-                          fit: BoxFit.cover,
-                          colorFilter: ColorFilter.mode(
-                            Colors.black.withOpacity(0.3),
-                            BlendMode.darken,
+    return StreamBuilder<List<Map<String, dynamic>>>(
+      stream: _service.getPromotionsStream(),
+      builder: (context, snapshot) {
+        if (!snapshot.hasData) {
+          return const Center(child: CircularProgressIndicator());
+        }
+
+        final promotions = snapshot.data!;
+        
+        // Safety check to reset current page if promotions list shrinks
+        if (_currentPage >= promotions.length && promotions.isNotEmpty) {
+           _currentPage = promotions.length - 1;
+        }
+
+        return Column(
+          children: [
+            Expanded(
+              child: PageView.builder(
+                controller: _pageController, // create slide based on #promotion, change current location
+                itemCount: promotions.length,
+                onPageChanged: (index) {
+                  setState(() {
+                    _currentPage = index;
+                  });
+                },
+                itemBuilder: (context, index) {
+                  final promo = promotions[index];
+                  return GestureDetector(
+                    onTap: () {
+                      final title = promo['title'] as String? ?? '';
+                      if (title.contains('Savings')) {
+                        Navigator.push(context, MaterialPageRoute(builder: (_) => const GoldSavingsPage()));
+                      } else {
+                        Navigator.push(context, MaterialPageRoute(builder: (_) => const CatalogPage()));
+                      }
+                    },
+                    child: Container(
+                      margin: const EdgeInsets.symmetric(horizontal: 4),
+                      decoration: BoxDecoration(
+                        borderRadius: BorderRadius.circular(12),
+                        color: Color(promo['color'] as int? ?? 0xFF800000),
+                        image: promo['image'] != null
+                            ? DecorationImage(
+                                image: NetworkImage(promo['image'] as String),
+                                fit: BoxFit.cover,
+                                colorFilter: ColorFilter.mode(
+                                  Colors.black.withOpacity(0.3),
+                                  BlendMode.darken,
+                                ),
+                              )
+                            : null,
+                      ),
+                      child: Container(
+                        padding: const EdgeInsets.all(16),
+                        alignment: Alignment.bottomLeft,
+                        child: Text(
+                          promo['title'] as String? ?? '',
+                          style: TextStyle(
+                            color: Color(promo['textColor'] as int? ?? 0xFFFFFFFF),
+                            fontWeight: FontWeight.bold,
+                            fontSize: 18,
+                            shadows: [
+                              const Shadow(
+                                color: Colors.black45,
+                                blurRadius: 4,
+                                offset: Offset(0, 2),
+                              ),
+                            ],
                           ),
-                        )
-                      : null,
-                ),
-                child: Container(
-                  padding: const EdgeInsets.all(16),
-                  alignment: Alignment.bottomLeft,
-                  child: Text(
-                    promo['title'],
-                    style: TextStyle(
-                      color: promo['textColor'] ?? Colors.white,
-                      fontWeight: FontWeight.bold,
-                      fontSize: 18,
-                      shadows: [
-                        const Shadow(
-                          color: Colors.black45,
-                          blurRadius: 4,
-                          offset: Offset(0, 2),
                         ),
-                      ],
+                      ),
                     ),
-                  ),
-                ),
-              );
-            },
-          ),
-        ),
-        const SizedBox(height: 8),
-        // Indicators
-        Row(
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: List.generate(_promotions.length, (index) {
-            return AnimatedContainer(
-              duration: const Duration(milliseconds: 300),
-              margin: const EdgeInsets.symmetric(horizontal: 4),
-              width: _currentPage == index ? 24 : 8, // Show wide for current
-              height: 8,
-              decoration: BoxDecoration(
-                color: _currentPage == index
-                    ? const Color(0xFF800000)
-                    : Colors.grey.withOpacity(0.5),
-                borderRadius: BorderRadius.circular(4),
+                  );
+                },
               ),
-            );
-          }),
-        ),
-      ],
+            ),
+            const SizedBox(height: 8),
+            // Indicators
+            Row(
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: List.generate(promotions.length, (index) {
+                return AnimatedContainer(
+                  duration: const Duration(milliseconds: 300),
+                  margin: const EdgeInsets.symmetric(horizontal: 4),
+                  width: _currentPage == index ? 24 : 8, // Show wide for current
+                  height: 8,
+                  decoration: BoxDecoration(
+                    color: _currentPage == index
+                        ? const Color(0xFF800000)
+                        : Colors.grey.withOpacity(0.5),
+                    borderRadius: BorderRadius.circular(4),
+                  ),
+                );
+              }),
+            ),
+          ],
+        );
+      },
     );
   }
 }

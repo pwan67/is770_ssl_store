@@ -3,6 +3,7 @@ import 'package:firebase_auth/firebase_auth.dart';
 import '../services/auth_service.dart';
 import '../services/mock_service.dart';
 import '../models/gold_asset.dart';
+import '../models/gold_savings.dart';
 import '../models/gold_transaction.dart';
 import '../models/gold_rate.dart';
 
@@ -130,20 +131,28 @@ class _PortfolioPageState extends State<PortfolioPage> {
             );
           }
 
-          return StreamBuilder<List<GoldAsset>>(
-            stream: _service.getMemberAssetsStream(),
-            builder: (context, assetSnapshot) {
-              if (assetSnapshot.connectionState == ConnectionState.waiting) {
+          return StreamBuilder<GoldSavingsAccount>(
+            stream: _service.getGoldSavingsAccountStream(),
+            builder: (context, savingsSnapshot) {
+              if (savingsSnapshot.connectionState == ConnectionState.waiting) {
                 return const Center(child: CircularProgressIndicator());
               }
+              final savingsAccount = savingsSnapshot.data ?? GoldSavingsAccount(totalWeightSaved: 0, totalAmountInvested: 0, lastUpdated: DateTime.now());
 
-              final assets = assetSnapshot.data ?? [];
-              final totalWeight = assets.fold(0.0, (sum, item) => sum + item.weight);
-              final totalValue = totalWeight * (_currentRate?.buyPrice ?? 0);
+              return StreamBuilder<List<GoldAsset>>(
+                stream: _service.getMemberAssetsStream(),
+                builder: (context, assetSnapshot) {
+                  if (assetSnapshot.connectionState == ConnectionState.waiting) {
+                    return const Center(child: CircularProgressIndicator());
+                  }
 
-              return StreamBuilder<double>(
-                stream: _service.getWalletBalanceStream(),
-                builder: (context, walletSnapshot) {
+                  final assets = assetSnapshot.data ?? [];
+                  final totalWeight = assets.fold(0.0, (sum, item) => sum + item.weight) + savingsAccount.totalWeightSaved;
+                  final totalValue = totalWeight * (_currentRate?.buyPrice ?? 0);
+
+                  return StreamBuilder<double>(
+                    stream: _service.getWalletBalanceStream(),
+                    builder: (context, walletSnapshot) {
                   final walletBalance = walletSnapshot.data ?? 0.0;
                   
                   // Asset List preparation
@@ -231,7 +240,7 @@ class _PortfolioPageState extends State<PortfolioPage> {
                         ),
                         const SizedBox(height: 32),
                     
-                    if (assets.isEmpty) ...[
+                    if (assets.isEmpty && savingsAccount.totalWeightSaved == 0) ...[
                       const _SectionHeader(title: 'My Assets (0)'),
                       const SizedBox(height: 12),
                       const Center(child: Padding(
@@ -239,6 +248,12 @@ class _PortfolioPageState extends State<PortfolioPage> {
                         child: Text('No gold assets yet.\nStart buying to build your portfolio!', textAlign: TextAlign.center, style: TextStyle(color: Colors.grey)),
                       ))
                     ] else ...[
+                      if (savingsAccount.totalWeightSaved > 0) ...[
+                        const _SectionHeader(title: 'Gold Savings (ออมทอง)'),
+                        const SizedBox(height: 12),
+                        _buildSavingsAssetCard(savingsAccount, _currentRate?.buyPrice ?? 40000.0),
+                        const SizedBox(height: 16),
+                      ],
                       if (ownedAssets.isNotEmpty) ...[
                         _SectionHeader(title: 'My Owned Gold (${ownedAssets.length})'),
                         const SizedBox(height: 12),
@@ -311,9 +326,70 @@ class _PortfolioPageState extends State<PortfolioPage> {
           );
         }
       );
-    }
-  ),
-);
+            }
+          );
+        }
+      ),
+    );
+  }
+
+  Widget _buildSavingsAssetCard(GoldSavingsAccount account, double currentBuyPrice) {
+    double currentVal = account.totalWeightSaved * currentBuyPrice;
+    double profit = currentVal - account.totalAmountInvested;
+
+    return Card(
+      margin: const EdgeInsets.only(bottom: 12),
+      shape: RoundedRectangleBorder(
+        borderRadius: BorderRadius.circular(12),
+        side: BorderSide.none,
+      ),
+      child: InkWell(
+        onTap: () {
+            // Navigate directly to the Savings Page if they tap this
+            Navigator.pushNamed(context, '/'); // Quick hack to jump, but preferably route to GoldSavingsPage
+            ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Manage on the Gold Savings page.')));
+        },
+        borderRadius: BorderRadius.circular(12),
+        child: Padding(
+          padding: const EdgeInsets.all(16.0),
+          child: Row(
+            children: [
+              Container(
+                padding: const EdgeInsets.all(10),
+                decoration: BoxDecoration(
+                  color: const Color(0xFFF3E5F5), // Light purple for savings
+                  borderRadius: BorderRadius.circular(10)
+                ),
+                child: const Icon(
+                  Icons.savings, 
+                  color: Color(0xFF8E24AA), // Deep purple
+                ),
+              ),
+              const SizedBox(width: 16),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    const Text('Fractional Gold Savings', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16)),
+                    Text('${account.totalWeightSaved.toStringAsFixed(4)} Baht • Invested ฿${account.totalAmountInvested.toInt()}', style: const TextStyle(fontSize: 12, color: Colors.grey)),
+                  ],
+                ),
+              ),
+              Column(
+                crossAxisAlignment: CrossAxisAlignment.end,
+                children: [
+                  Text('฿ ${currentVal.toInt()}', style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 16)),
+                  Text(
+                    '${profit >= 0 ? "+" : ""}฿ ${profit.toInt()}', 
+                    style: TextStyle(fontSize: 12, color: profit >= 0 ? Colors.green : Colors.red, fontWeight: FontWeight.bold)
+                  ),
+                ],
+              )
+            ],
+          ),
+        ),
+      ),
+    );
   }
 }
 
