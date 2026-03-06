@@ -216,6 +216,19 @@ class MockService {
     await FirebaseFirestore.instance.collection('users').doc(uid).set({
       'walletBalance': FieldValue.increment(amount)
     }, SetOptions(merge: true));
+
+    // Add a notification
+    final notifId = DateTime.now().millisecondsSinceEpoch.toString();
+    final notifRef = FirebaseFirestore.instance.collection('users').doc(uid).collection('notifications').doc('n_$notifId');
+    final notif = NotificationItem(
+      id: notifId,
+      title: 'Wallet Top-Up',
+      message: 'Successfully deposited ฿${amount.toStringAsFixed(2)} into your wallet.',
+      type: 'store',
+      timestamp: DateTime.now(),
+      isRead: false,
+    );
+    await notifRef.set(notif.toMap());
   }
 
   Future<void> withdrawFunds(double amount) async {
@@ -234,6 +247,19 @@ class MockService {
     await FirebaseFirestore.instance.collection('users').doc(uid).set({
       'walletBalance': FieldValue.increment(-amount)
     }, SetOptions(merge: true));
+
+    // Add a notification
+    final notifId = DateTime.now().millisecondsSinceEpoch.toString();
+    final notifRef = FirebaseFirestore.instance.collection('users').doc(uid).collection('notifications').doc('n_$notifId');
+    final notif = NotificationItem(
+      id: notifId,
+      title: 'Wallet Withdrawal',
+      message: 'Successfully withdrew ฿${amount.toStringAsFixed(2)} from your wallet.',
+      type: 'store',
+      timestamp: DateTime.now(),
+      isRead: false,
+    );
+    await notifRef.set(notif.toMap());
   }
 
   Future<Map<String, dynamic>> getUserProfile() async {
@@ -433,6 +459,50 @@ class MockService {
         .update({'isRead': true});
   }
 
+  Future<void> markAllNotificationsAsRead() async {
+    final uid = currentUserId;
+    if (uid == null) return;
+    
+    final collection = FirebaseFirestore.instance.collection('users').doc(uid).collection('notifications');
+    final unreadDocs = await collection.where('isRead', isEqualTo: false).get();
+    
+    if (unreadDocs.docs.isEmpty) return;
+    
+    final batch = FirebaseFirestore.instance.batch();
+    for (var doc in unreadDocs.docs) {
+      batch.update(doc.reference, {'isRead': true});
+    }
+    await batch.commit();
+  }
+
+  Future<void> deleteNotification(String notificationId) async {
+    final uid = currentUserId;
+    if (uid == null) return;
+    
+    await FirebaseFirestore.instance
+        .collection('users')
+        .doc(uid)
+        .collection('notifications')
+        .doc(notificationId)
+        .delete();
+  }
+
+  Future<void> clearAllNotifications() async {
+    final uid = currentUserId;
+    if (uid == null) return;
+    
+    final collection = FirebaseFirestore.instance.collection('users').doc(uid).collection('notifications');
+    final allDocs = await collection.get();
+    
+    if (allDocs.docs.isEmpty) return;
+    
+    final batch = FirebaseFirestore.instance.batch();
+    for (var doc in allDocs.docs) {
+      batch.delete(doc.reference);
+    }
+    await batch.commit();
+  }
+
   Future<void> createTransaction({
     required String assetName,
     required double weight,
@@ -519,6 +589,19 @@ class MockService {
         .collection('transactions')
         .doc('t$id')
         .set(globalTxDoc);
+
+    // Add a notification
+    final notifId = DateTime.now().millisecondsSinceEpoch.toString();
+    final notifRef = FirebaseFirestore.instance.collection('users').doc(uid).collection('notifications').doc('n_$notifId');
+    final notif = NotificationItem(
+      id: notifId,
+      title: 'Transaction Successful',
+      message: 'Successfully completed ${type.name} for $assetName (${weight.toStringAsFixed(2)} Baht).',
+      type: type == TransactionType.buy ? 'store' : 'pawn',
+      timestamp: DateTime.now(),
+      isRead: false,
+    );
+    await notifRef.set(notif.toMap());
   }
 
   Future<void> sellAsset({
@@ -572,6 +655,19 @@ class MockService {
         .collection('transactions')
         .doc('t$id')
         .set(globalTxDoc);
+
+    // Add a notification
+    final notifId = DateTime.now().millisecondsSinceEpoch.toString();
+    final notifRef = FirebaseFirestore.instance.collection('users').doc(uid).collection('notifications').doc('n_$notifId');
+    final notif = NotificationItem(
+      id: notifId,
+      title: 'Asset Sold',
+      message: 'Successfully sold ${asset.name} for ฿${sellPrice.toStringAsFixed(2)}.',
+      type: 'store',
+      timestamp: DateTime.now(),
+      isRead: false,
+    );
+    await notifRef.set(notif.toMap());
   }
 
   Future<void> pawnAsset({
@@ -630,6 +726,19 @@ class MockService {
         .collection('transactions')
         .doc('t$id')
         .set(transactionDoc);
+
+    // Add a notification
+    final notifId = DateTime.now().millisecondsSinceEpoch.toString();
+    final notifRef = FirebaseFirestore.instance.collection('users').doc(uid).collection('notifications').doc('n_$notifId');
+    final notif = NotificationItem(
+      id: notifId,
+      title: 'Pawn Successful',
+      message: 'Successfully pawned ${asset.name} for a loan of ฿${loanAmount.toStringAsFixed(2)}.',
+      type: 'pawn',
+      timestamp: DateTime.now(),
+      isRead: false,
+    );
+    await notifRef.set(notif.toMap());
   }
 
   Future<void> redeemAsset({
@@ -692,6 +801,19 @@ class MockService {
         .collection('transactions')
         .doc('t$id')
         .set(transactionDoc);
+
+    // Add a notification
+    final notifId = DateTime.now().millisecondsSinceEpoch.toString();
+    final notifRef = FirebaseFirestore.instance.collection('users').doc(uid).collection('notifications').doc('n_$notifId');
+    final notif = NotificationItem(
+      id: notifId,
+      title: 'Asset Redeemed',
+      message: 'Successfully redeemed ${asset.name}. Total paid: ฿${totalOwed.toStringAsFixed(2)}.',
+      type: 'pawn',
+      timestamp: DateTime.now(),
+      isRead: false,
+    );
+    await notifRef.set(notif.toMap());
   }
 
   double calculatePawnLoan(double weight, double currentBuyPrice) {

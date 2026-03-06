@@ -15,6 +15,33 @@ class NotificationsPage extends StatelessWidget {
         backgroundColor: const Color(0xFF800000),
         foregroundColor: Colors.white,
         elevation: 0,
+        actions: [
+          PopupMenuButton<String>(
+            icon: const Icon(Icons.more_vert),
+            onSelected: (value) async {
+              if (value == 'mark_read') {
+                await MockService().markAllNotificationsAsRead();
+              } else if (value == 'clear_all') {
+                await MockService().clearAllNotifications();
+                if (context.mounted) {
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    const SnackBar(content: Text('All notifications cleared')),
+                  );
+                }
+              }
+            },
+            itemBuilder: (context) => [
+              const PopupMenuItem(
+                value: 'mark_read',
+                child: Text('Mark All as Read'),
+              ),
+              const PopupMenuItem(
+                value: 'clear_all',
+                child: Text('Clear All', style: TextStyle(color: Colors.red)),
+              ),
+            ],
+          ),
+        ],
       ),
       body: StreamBuilder<List<NotificationItem>>(
         stream: MockService().getNotificationsStream(),
@@ -41,7 +68,26 @@ class NotificationsPage extends StatelessWidget {
             itemCount: notifications.length,
             separatorBuilder: (context, index) => const Divider(height: 1, indent: 70),
             itemBuilder: (context, index) {
-              return _buildNotificationTile(context, notifications[index]);
+              final notification = notifications[index];
+              return Dismissible(
+                key: Key(notification.id),
+                direction: DismissDirection.endToStart,
+                background: Container(
+                  color: Colors.red,
+                  alignment: Alignment.centerRight,
+                  padding: const EdgeInsets.only(right: 20),
+                  child: const Icon(Icons.delete, color: Colors.white),
+                ),
+                onDismissed: (direction) async {
+                  await MockService().deleteNotification(notification.id);
+                  if (context.mounted) {
+                    ScaffoldMessenger.of(context).showSnackBar(
+                      SnackBar(content: Text('Notification removed'), duration: const Duration(seconds: 2)),
+                    );
+                  }
+                },
+                child: _buildNotificationTile(context, notification),
+              );
             },
           );
         },
