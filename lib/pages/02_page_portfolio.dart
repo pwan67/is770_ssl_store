@@ -274,7 +274,7 @@ class _PortfolioPageState extends State<PortfolioPage> {
                                     ),
                                     const SizedBox(width: 8),
                                     Text(
-                                      'Profit/Loss: $pnlSign฿${formatter.format(pnl.abs())} ($pnlSign${pnlPercentage.toStringAsFixed(2)}%)',
+                                      '${isProfit ? 'Profit' : 'Loss'}: $pnlSign฿${formatter.format(pnl.abs())} ($pnlSign${pnlPercentage.toStringAsFixed(2)}%)',
                                       style: TextStyle(
                                         color: pnlColor,
                                         fontWeight: FontWeight.bold,
