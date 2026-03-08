@@ -1,5 +1,10 @@
 import 'dart:async';
 import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:firebase_storage/firebase_storage.dart';
+import 'package:firebase_auth/firebase_auth.dart';
+import 'dart:typed_data';
+import 'package:intl/intl.dart';
+
 import '../models/gold_rate.dart';
 import '../models/product.dart';
 import '../models/news_item.dart';
@@ -220,10 +225,11 @@ class MockService {
     // Add a notification
     final notifId = DateTime.now().millisecondsSinceEpoch.toString();
     final notifRef = FirebaseFirestore.instance.collection('users').doc(uid).collection('notifications').doc('n_$notifId');
+    final formatter = NumberFormat('#,##0.00');
     final notif = NotificationItem(
       id: notifId,
       title: 'Wallet Top-Up',
-      message: 'Successfully deposited ฿${amount.toStringAsFixed(2)} into your wallet.',
+      message: 'Successfully deposited ฿${formatter.format(amount)} into your wallet.',
       type: 'store',
       timestamp: DateTime.now(),
       isRead: false,
@@ -251,10 +257,11 @@ class MockService {
     // Add a notification
     final notifId = DateTime.now().millisecondsSinceEpoch.toString();
     final notifRef = FirebaseFirestore.instance.collection('users').doc(uid).collection('notifications').doc('n_$notifId');
+    final formatter = NumberFormat('#,##0.00');
     final notif = NotificationItem(
       id: notifId,
       title: 'Wallet Withdrawal',
-      message: 'Successfully withdrew ฿${amount.toStringAsFixed(2)} from your wallet.',
+      message: 'Successfully withdrew ฿${formatter.format(amount)} from your wallet.',
       type: 'store',
       timestamp: DateTime.now(),
       isRead: false,
@@ -593,6 +600,7 @@ class MockService {
     // Add a notification
     final notifId = DateTime.now().millisecondsSinceEpoch.toString();
     final notifRef = FirebaseFirestore.instance.collection('users').doc(uid).collection('notifications').doc('n_$notifId');
+    final formatter = NumberFormat('#,##0.00');
     final notif = NotificationItem(
       id: notifId,
       title: 'Transaction Successful',
@@ -659,10 +667,11 @@ class MockService {
     // Add a notification
     final notifId = DateTime.now().millisecondsSinceEpoch.toString();
     final notifRef = FirebaseFirestore.instance.collection('users').doc(uid).collection('notifications').doc('n_$notifId');
+    final formatter = NumberFormat('#,##0.00');
     final notif = NotificationItem(
       id: notifId,
       title: 'Asset Sold',
-      message: 'Successfully sold ${asset.name} for ฿${sellPrice.toStringAsFixed(2)}.',
+      message: 'Successfully sold ${asset.name} for ฿${formatter.format(sellPrice)}.',
       type: 'store',
       timestamp: DateTime.now(),
       isRead: false,
@@ -730,10 +739,11 @@ class MockService {
     // Add a notification
     final notifId = DateTime.now().millisecondsSinceEpoch.toString();
     final notifRef = FirebaseFirestore.instance.collection('users').doc(uid).collection('notifications').doc('n_$notifId');
+    final formatter = NumberFormat('#,##0.00');
     final notif = NotificationItem(
       id: notifId,
       title: 'Pawn Successful',
-      message: 'Successfully pawned ${asset.name} for a loan of ฿${loanAmount.toStringAsFixed(2)}.',
+      message: 'Successfully pawned ${asset.name} for a loan of ฿${formatter.format(loanAmount)}.',
       type: 'pawn',
       timestamp: DateTime.now(),
       isRead: false,
@@ -805,10 +815,11 @@ class MockService {
     // Add a notification
     final notifId = DateTime.now().millisecondsSinceEpoch.toString();
     final notifRef = FirebaseFirestore.instance.collection('users').doc(uid).collection('notifications').doc('n_$notifId');
+    final formatter = NumberFormat('#,##0.00');
     final notif = NotificationItem(
       id: notifId,
       title: 'Asset Redeemed',
-      message: 'Successfully redeemed ${asset.name}. Total paid: ฿${totalOwed.toStringAsFixed(2)}.',
+      message: 'Successfully redeemed ${asset.name}. Total paid: ฿${formatter.format(totalOwed)}.',
       type: 'pawn',
       timestamp: DateTime.now(),
       isRead: false,
@@ -1002,6 +1013,77 @@ class MockService {
     });
   }
 
+  // Admin function to reset/seed catalog
+  Future<void> seedDummyProducts() async {
+    final firestore = FirebaseFirestore.instance;
+    final productsRef = firestore.collection('products');
+    final batch = firestore.batch();
+
+    final dummyProducts = [
+      {
+        'id': 'p1',
+        'name': 'Classic Gold Chain',
+        'description': 'A timeless 96.5% pure gold necklace suitable for everyday wear. Features a durable hook clasp.',
+        'price': 42000.0,
+        'weight': 1.0,
+        'laborFee': 1200.0,
+        'stock': 15,
+        'imageUrl': 'https://somsrimanee.com/wp-content/uploads/2023/07/20240906-0370.jpg',
+        'category': 'Necklace'
+      },
+      {
+        'id': 'p2',
+        'name': 'Dragon Carved Ring',
+        'description': 'Intricately designed gold ring featuring a traditional dragon motif. Perfect for special occasions.',
+        'price': 21500.0,
+        'weight': 0.5,
+        'laborFee': 800.0,
+        'stock': 8,
+        'imageUrl': 'https://somsrimanee.com/wp-content/uploads/2023/07/20240906-0158.jpg',
+        'category': 'Ring'
+      },
+      {
+        'id': 'p3',
+        'name': 'Simple Gold Bangle',
+        'description': 'Elegant solid gold bangle with a smooth polished finish.',
+        'price': 84500.0,
+        'weight': 2.0,
+        'laborFee': 1500.0,
+        'stock': 5,
+        'imageUrl': 'https://somsrimanee.com/wp-content/uploads/2023/07/20240906-0279-Edit.jpg',
+        'category': 'Bracelet'
+      },
+      {
+        'id': 'p4',
+        'name': 'Lotus Stud Earrings',
+        'description': 'Delicate gold stud earrings shaped like blooming lotus flowers.',
+        'price': 10800.0,
+        'weight': 0.25,
+        'laborFee': 600.0,
+        'stock': 20,
+        'imageUrl': 'https://somsrimanee.com/wp-content/uploads/2023/07/20240906-0209-Edit.jpg',
+        'category': 'Earrings'
+      },
+      {
+        'id': 'p5',
+        'name': 'Ruby Embedded Ring',
+        'description': 'Premium gold ring featuring a small, high-quality ruby centerpiece.',
+        'price': 25000.0,
+        'weight': 0.5,
+        'laborFee': 2500.0,
+        'stock': 3,
+        'imageUrl': 'https://somsrimanee.com/wp-content/uploads/2023/07/20240906-0164.jpg',
+        'category': 'Ring'
+      },
+    ];
+
+    for (var p in dummyProducts) {
+      batch.set(productsRef.doc(p['id'].toString()), p);
+    }
+    
+    await batch.commit();
+  }
+
   // Search and Filter helper (to be used locally on the streamed list)
   List<Product> filterProducts(List<Product> allProducts, String query) {
     if (query.isEmpty) return allProducts;
@@ -1096,13 +1178,14 @@ class MockService {
     batch.set(txRef, stx.toMap());
 
     // 6. Add global transaction record
+    final formatter = NumberFormat('#,##0.00');
     final globalTxDoc = {
       'assetId': 'savings',
       'type': TransactionType.buy.name, // Using 'buy' for simplicity in history
       'amount': amountInTHB,
       'weight': weightGained,
       'timestamp': FieldValue.serverTimestamp(),
-      'details': 'SAVINGS: Deposited ฿${amountInTHB.toStringAsFixed(0)}',
+      'details': 'SAVINGS: Deposited ฿${formatter.format(amountInTHB)}',
       'userId': uid,
       'userEmail': FirebaseAuth.instance.currentUser?.email ?? 'Unknown Email',
     };
@@ -1119,7 +1202,7 @@ class MockService {
     final notif = NotificationItem(
       id: notifId,
       title: 'Gold Savings Deposit',
-      message: 'Successfully deposited ฿${amountInTHB.toStringAsFixed(2)} toward your Gold Savings. Gained ${weightGained.toStringAsFixed(4)} Baht.',
+      message: 'Successfully deposited ฿${formatter.format(amountInTHB)} toward your Gold Savings. Gained ${weightGained.toStringAsFixed(4)} Baht.',
       type: 'savings',
       timestamp: DateTime.now(),
       isRead: false,
@@ -1183,6 +1266,7 @@ class MockService {
 
     // 6. Add global transaction record
     final amountAbs = amountInTHB.abs();
+    final formatter = NumberFormat('#,##0.00');
     final globalTxDoc = {
       'assetId': 'savings',
       'type': TransactionType.sell.name, // Using 'sell' for history
@@ -1206,7 +1290,7 @@ class MockService {
     final notif = NotificationItem(
       id: notifId,
       title: 'Gold Savings Sold',
-      message: 'Successfully sold ${weightToSell.toStringAsFixed(4)} Baht of saved gold. You received ฿${amountInTHB.toStringAsFixed(2)} back into your wallet.',
+      message: 'Successfully sold ${weightToSell.toStringAsFixed(4)} Baht of saved gold. You received ฿${formatter.format(amountInTHB)} back into your wallet.',
       type: 'savings',
       timestamp: DateTime.now(),
       isRead: false,

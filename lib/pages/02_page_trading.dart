@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:firebase_auth/firebase_auth.dart';
+import 'package:intl/intl.dart';
 import '../services/auth_service.dart';
 import '../models/gold_asset.dart';
 import '../models/gold_rate.dart';
@@ -131,6 +132,7 @@ class _BuyTabState extends State<_BuyTab> {
     if (widget.currentRate == null) return const Center(child: CircularProgressIndicator());
     
     double total = _weight * widget.currentRate!.sellPrice;
+    final formatter = NumberFormat('#,##0');
 
     return StreamBuilder<double>(
       stream: widget.service.getWalletBalanceStream(),
@@ -152,12 +154,15 @@ class _BuyTabState extends State<_BuyTab> {
                   borderRadius: BorderRadius.circular(12),
                   border: Border.all(color: const Color(0xFFFFD700)),
                 ),
-                child: Row(
-                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                  children: [
-                    const Text('Wallet Balance:', style: TextStyle(fontWeight: FontWeight.bold)),
-                    Text('฿ ${balance.toStringAsFixed(0)}', style: const TextStyle(fontWeight: FontWeight.bold, color: Colors.green, fontSize: 16)),
-                  ],
+                child: Padding(
+                  padding: const EdgeInsets.symmetric(horizontal: 16),
+                  child: Row(
+                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                    children: [
+                      const Text('Wallet Balance:', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16)),
+                      Text('฿ ${formatter.format(balance)}', style: const TextStyle(fontWeight: FontWeight.bold, color: Colors.green, fontSize: 16)),
+                    ],
+                  ),
                 ),
               ),
 
@@ -187,11 +192,13 @@ class _BuyTabState extends State<_BuyTab> {
             ),
             child: Column(
               children: [
-                _rowItem('Gold Price', '฿ ${widget.currentRate!.sellPrice.toStringAsFixed(0)} / Baht'),
+                const Text('Summary', style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold, color: Color(0xFF600000))),
+                const SizedBox(height: 16),
+                _rowItem('Selling Price', '฿ ${formatter.format(widget.currentRate!.sellPrice)} / Baht'),
                 const Divider(),
-                _rowItem('Total Amount', '฿ ${total.toStringAsFixed(0)}', isBold: true),
-                if (hasEnoughFunds)
-                  _rowItem('Estimated Remaining Balance', '฿ ${(balance - total).toStringAsFixed(0)}', isBold: true),
+                _rowItem('Total Amount', '฿ ${formatter.format(total)}', isBold: true),
+                if (balance >= total)
+                  _rowItem('Estimated Remaining Balance', '฿ ${formatter.format(balance - total)}', isBold: true),
               ],
             ),
           ),
@@ -276,6 +283,7 @@ class _SellTabState extends State<_SellTab> {
   bool _isProcessing = false;
 
   void _showSellConfirmation(BuildContext context, GoldAsset asset, double estimatedValue) {
+    final formatter = NumberFormat('#,##0');
     showDialog(
       context: context,
       barrierDismissible: !_isProcessing,
@@ -296,11 +304,17 @@ class _SellTabState extends State<_SellTab> {
                       Text('Asset: ${asset.name}'),
                       Text('Weight: ${asset.weight} Baht'),
                       const SizedBox(height: 12),
-                      const Text('Estimated Value:', style: TextStyle(fontWeight: FontWeight.bold)),
-                      Text('+ ฿ ${estimatedValue.toStringAsFixed(0)}', style: const TextStyle(color: Colors.green, fontSize: 18, fontWeight: FontWeight.bold)),
-                      const SizedBox(height: 12),
-                      const Text('Estimated New Balance:', style: TextStyle(fontWeight: FontWeight.bold)),
-                      Text('฿ ${newBalance.toStringAsFixed(0)}', style: const TextStyle(color: Colors.blue, fontSize: 18, fontWeight: FontWeight.bold)),
+                      Padding(
+                        padding: const EdgeInsets.symmetric(vertical: 4),
+                        child: Row(mainAxisAlignment: MainAxisAlignment.spaceBetween, children: [
+                          const Text('Credit to Wallet:', style: TextStyle(fontWeight: FontWeight.bold)),
+                          Text('+ ฿ ${formatter.format(estimatedValue)}', style: const TextStyle(color: Colors.green, fontSize: 18, fontWeight: FontWeight.bold)),
+                        ]),
+                      ),
+                      Row(mainAxisAlignment: MainAxisAlignment.spaceBetween, children: [
+                        const Text('New Wallet Balance:', style: TextStyle(fontWeight: FontWeight.bold)),
+                        Text('฿ ${formatter.format(newBalance)}', style: const TextStyle(color: Colors.blue, fontSize: 18, fontWeight: FontWeight.bold)),
+                      ]),
                       const SizedBox(height: 16),
                       const Text('Are you sure you want to sell this asset? This action cannot be undone.', style: TextStyle(fontSize: 12, color: Colors.grey)),
                     ],
@@ -349,6 +363,7 @@ class _SellTabState extends State<_SellTab> {
 
   @override
   Widget build(BuildContext context) {
+    final formatter = NumberFormat('#,##0');
     return StreamBuilder<List<GoldAsset>>(
       stream: widget.service.getMemberAssetsStream(),
       builder: (context, snapshot) {
@@ -387,7 +402,7 @@ class _SellTabState extends State<_SellTab> {
                   crossAxisAlignment: CrossAxisAlignment.end,
                   children: [
                     const Text('EST. VALUE', style: TextStyle(fontSize: 10, color: Colors.grey)),
-                    Text('฿ ${estimatedValue.toStringAsFixed(0)}', 
+                    Text('฿ ${formatter.format(estimatedValue)}', 
                       style: const TextStyle(fontWeight: FontWeight.bold, color: Colors.green)),
                   ],
                 ),
@@ -415,8 +430,9 @@ class _PawnTabState extends State<_PawnTab> {
 
   void _showPawnConfirmation(BuildContext context, GoldAsset asset, double maxLoan) {
     double requestedLoan = maxLoan;
+    final formatter = NumberFormat('#,##0');
     final TextEditingController _loanController = TextEditingController(text: maxLoan.toStringAsFixed(0));
-    final String errorMsg = 'Amount must be between 1 and ${maxLoan.toStringAsFixed(0)}';
+    final String errorMsg = 'Amount must be between 1 and ${formatter.format(maxLoan)}';
 
     showDialog(
       context: context,
@@ -451,11 +467,10 @@ class _PawnTabState extends State<_PawnTab> {
                           controller: _loanController,
                           keyboardType: const TextInputType.numberWithOptions(decimal: true),
                           decoration: InputDecoration(
+                            labelText: 'Desired Loan Amount (฿)',
                             border: const OutlineInputBorder(),
-                            isDense: true,
-                            errorText: !isValid ? errorMsg : null,
-                            suffixText: 'Max: ${maxLoan.toStringAsFixed(0)}',
-                            suffixStyle: const TextStyle(fontSize: 10)
+                            suffixText: 'Max: ${formatter.format(maxLoan)}',
+                            errorText: (!isValid && _loanController.text.isNotEmpty) ? errorMsg : null,
                           ),
                           onChanged: (val) {
                             setStateDialog(() {
@@ -463,9 +478,16 @@ class _PawnTabState extends State<_PawnTab> {
                             });
                           },
                         ),
-                        const SizedBox(height: 12),
-                        const Text('Estimated New Wallet Balance:', style: TextStyle(fontWeight: FontWeight.bold)),
-                        Text('฿ ${newBalance.toStringAsFixed(0)}', style: const TextStyle(color: Colors.blue, fontSize: 18, fontWeight: FontWeight.bold)),
+                        const SizedBox(height: 16),
+                        Row(mainAxisAlignment: MainAxisAlignment.spaceBetween, children: [
+                          const Text('Credit to Wallet:', style: TextStyle(fontWeight: FontWeight.bold)),
+                          Text('+ ฿ ${formatter.format(requestedLoan)}', style: const TextStyle(color: Colors.green, fontSize: 18, fontWeight: FontWeight.bold)),
+                        ]),
+                        const SizedBox(height: 8),
+                        Row(mainAxisAlignment: MainAxisAlignment.spaceBetween, children: [
+                          const Text('New Wallet Balance:', style: TextStyle(fontWeight: FontWeight.bold)),
+                          Text('฿ ${formatter.format(newBalance)}', style: const TextStyle(color: Colors.blue, fontSize: 18, fontWeight: FontWeight.bold)),
+                        ]),
                         const SizedBox(height: 16),
                         Container(
                           padding: const EdgeInsets.all(8),
@@ -497,7 +519,7 @@ class _PawnTabState extends State<_PawnTab> {
                        await widget.service.pawnAsset(asset: asset, loanAmount: requestedLoan);
                        if (mounted) {
                           Navigator.of(context).pop();
-                          ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Asset Pawned! ฿${requestedLoan.toStringAsFixed(0)} added to Wallet.')));
+                          ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Asset Pawned! ฿${formatter.format(requestedLoan)} added to Wallet.')));
                        }
                     } catch (e) {
                       if (mounted) {
@@ -525,6 +547,7 @@ class _PawnTabState extends State<_PawnTab> {
 
   @override
   Widget build(BuildContext context) {
+    final formatter = NumberFormat('#,##0');
     return Column(
       children: [
         Container(
@@ -579,9 +602,9 @@ class _PawnTabState extends State<_PawnTab> {
                         mainAxisAlignment: MainAxisAlignment.center,
                         crossAxisAlignment: CrossAxisAlignment.end,
                         children: [
-                          const Text('MAX LOAN', style: TextStyle(fontSize: 10, color: Colors.grey)),
-                          Text('฿ ${maxLoan.toStringAsFixed(0)}', 
-                            style: const TextStyle(fontWeight: FontWeight.bold, color: Colors.orange)),
+                          Text('Max Loan:', style: TextStyle(color: Colors.grey[600], fontSize: 12)),
+                          Text('฿ ${formatter.format(maxLoan)}', 
+                            style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 16, color: Colors.blue)),
                         ],
                       ),
                       onTap: _isProcessing ? null : () => _showPawnConfirmation(context, asset, maxLoan),

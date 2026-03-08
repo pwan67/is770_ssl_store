@@ -280,8 +280,28 @@ class _ProfileMemberView extends StatelessWidget {
                 subtitle: 'Update your name, photo, and phone number',
                 onTap: () => Navigator.push(context, MaterialPageRoute(builder: (_) => const EditProfilePage())),
               ),
+              _buildDivider(),
+              _buildListTile(
+                icon: Icons.sync,
+                title: 'Sync Dummy Products',
+                subtitle: 'Admin only: Restore default catalog items to Firestore',
+                onTap: () async {
+                  try {
+                    ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Syncing products...')));
+                    await MockService().seedDummyProducts();
+                    if (context.mounted) {
+                      ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Products synced successfully!')));
+                    }
+                  } catch (e) {
+                    if (context.mounted) {
+                      ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Error: $e')));
+                    }
+                  }
+                },
+                trailing: const Icon(Icons.admin_panel_settings, color: Colors.grey),
+              ),
             ]),
-            const SizedBox(height: 16),
+            const SizedBox(height: 32),
             _buildInfoCard(
               icon: Icons.email,
               title: 'Email Address',
@@ -398,7 +418,7 @@ class _ProfileMemberView extends StatelessWidget {
     );
   }
 
-  Widget _buildListTile({required IconData icon, required String title, String? subtitle, required VoidCallback onTap}) {
+  Widget _buildListTile({required IconData icon, required String title, String? subtitle, required VoidCallback onTap, Widget? trailing}) {
     return ListTile(
       onTap: onTap,
       contentPadding: const EdgeInsets.symmetric(horizontal: 20, vertical: 8),
@@ -412,7 +432,7 @@ class _ProfileMemberView extends StatelessWidget {
       ),
       title: Text(title, style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 16)),
       subtitle: subtitle != null ? Text(subtitle, style: const TextStyle(fontSize: 13)) : null,
-      trailing: const Icon(Icons.chevron_right, color: Colors.grey),
+      trailing: trailing ?? const Icon(Icons.chevron_right, color: Colors.grey),
     );
   }
 

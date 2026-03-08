@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:url_launcher/url_launcher.dart';
 
 class StoreInfoCard extends StatelessWidget {
   const StoreInfoCard({super.key});
@@ -21,13 +22,28 @@ class StoreInfoCard extends StatelessWidget {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
-          // Mock Map Image
-          ClipRRect(
-            borderRadius: const BorderRadius.vertical(top: Radius.circular(16)),
-            child: Image.network(
-              'https://via.placeholder.com/600x200/E0E0E0/757575?text=Map+Location+View',
-              height: 150,
-              fit: BoxFit.cover,
+          // Interactive Map Image
+          GestureDetector(
+            onTap: () async {
+              final Uri url = Uri.parse('https://maps.app.goo.gl/zo5SvJGdGuUG2Ui27');
+              if (await canLaunchUrl(url)) {
+                await launchUrl(url, mode: LaunchMode.externalApplication);
+              }
+            },
+            child: ClipRRect(
+              borderRadius: const BorderRadius.vertical(top: Radius.circular(16)),
+              child: Image.asset(
+                'assets/images/store_map.png',
+                height: 150,
+                fit: BoxFit.cover,
+                errorBuilder: (context, error, stackTrace) => Container(
+                  height: 150,
+                  color: Colors.grey[200],
+                  child: const Center(
+                    child: Icon(Icons.map, size: 50, color: Colors.grey),
+                  ),
+                ),
+              ),
             ),
           ),
           Padding(
@@ -50,7 +66,7 @@ class StoreInfoCard extends StatelessWidget {
                     SizedBox(width: 8),
                     Expanded(
                       child: Text(
-                        '123 Chandi Road, Chawang, Nakhon Si Thammarat, 10270',
+                        '999 Chandi Road, Chawang, Nakhon Si Thammarat, 10270',
                         style: TextStyle(color: Colors.black87),
                       ),
                     ),
@@ -72,7 +88,18 @@ class StoreInfoCard extends StatelessWidget {
                   children: [
                     Expanded(
                       child: OutlinedButton.icon(
-                        onPressed: () {},
+                        onPressed: () async {
+                          final Uri url = Uri.parse('tel:0999999999');
+                          try {
+                            await launchUrl(url);
+                          } catch (e) {
+                            if (context.mounted) {
+                              ScaffoldMessenger.of(context).showSnackBar(
+                                const SnackBar(content: Text('Could not launch dialer')),
+                              );
+                            }
+                          }
+                        },
                         icon: const Icon(Icons.call, color: Color(0xFF800000)),
                         label: const Text(
                           'Call',
@@ -86,7 +113,18 @@ class StoreInfoCard extends StatelessWidget {
                     const SizedBox(width: 12),
                     Expanded(
                       child: ElevatedButton.icon(
-                        onPressed: () {},
+                        onPressed: () async {
+                          final Uri url = Uri.parse('https://maps.app.goo.gl/zo5SvJGdGuUG2Ui27');
+                          try {
+                            await launchUrl(url, mode: LaunchMode.externalApplication);
+                          } catch (e) {
+                            if (context.mounted) {
+                              ScaffoldMessenger.of(context).showSnackBar(
+                                const SnackBar(content: Text('Could not launch maps')),
+                              );
+                            }
+                          }
+                        },
                         icon: const Icon(Icons.map, color: Colors.black),
                         label: const Text(
                           'Navigate',

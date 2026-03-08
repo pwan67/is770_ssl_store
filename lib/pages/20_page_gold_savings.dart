@@ -235,8 +235,12 @@ class _GoldSavingsPageState extends State<GoldSavingsPage> {
         ),
         onPressed: () {
           setSheetState(() {
-            final currentVal = double.tryParse(_amountController.text) ?? 0;
-            _amountController.text = (currentVal + amount).toStringAsFixed(0);
+            // Assuming 'amount' here is always a fixed value like 100, 500, 1000
+            // If 'amount' could be double.infinity for a 'MAX' button,
+            // you would need to fetch the actual max balance here.
+            // For now, we'll just apply the NumberFormat to the existing logic.
+            final currentVal = double.tryParse(_amountController.text.replaceAll(',', '')) ?? 0.0;
+            _amountController.text = NumberFormat('#,##0').format(currentVal + amount);
           });
         },
         child: Text('+฿${NumberFormat('#,##0').format(amount)}'),

@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:firebase_auth/firebase_auth.dart';
+import 'package:intl/intl.dart';
 import '../services/auth_service.dart';
 import '../services/mock_service.dart';
 import '../models/gold_asset.dart';
@@ -61,6 +62,7 @@ class _PortfolioPageState extends State<PortfolioPage> {
 
   void _showWithdrawDialog(BuildContext context, double maxBalance) {
     final TextEditingController amountController = TextEditingController();
+    final formatter = NumberFormat('#,##0');
     showDialog(
       context: context,
       builder: (context) {
@@ -69,7 +71,7 @@ class _PortfolioPageState extends State<PortfolioPage> {
           content: TextField(
             controller: amountController,
             keyboardType: TextInputType.number,
-            decoration: InputDecoration(labelText: 'Amount (Max: ฿${maxBalance.toStringAsFixed(0)})', border: const OutlineInputBorder()),
+            decoration: InputDecoration(labelText: 'Amount (Max: ฿${formatter.format(maxBalance)})', border: const OutlineInputBorder()),
           ),
           actions: [
             TextButton(onPressed: () => Navigator.pop(context), child: const Text('Cancel')),
@@ -149,6 +151,18 @@ class _PortfolioPageState extends State<PortfolioPage> {
                   final assets = assetSnapshot.data ?? [];
                   final totalWeight = assets.fold(0.0, (sum, item) => sum + item.weight) + savingsAccount.totalWeightSaved;
                   final totalValue = totalWeight * (_currentRate?.buyPrice ?? 0);
+                  
+                  // Calculate Profit/Loss
+                  final assetsCost = assets.fold(0.0, (sum, item) => sum + (item.acquisitionPrice ?? 0.0));
+                  final totalCost = assetsCost + savingsAccount.totalAmountInvested;
+                  
+                  final double pnl = totalValue - totalCost;
+                  final double pnlPercentage = totalCost > 0 ? (pnl / totalCost) * 100 : 0.0;
+                  
+                  final bool isProfit = pnl >= 0;
+                  final Color pnlColor = isProfit ? const Color(0xFF4CAF50) : const Color(0xFFE53935);
+                  final String pnlSign = isProfit ? '+' : '';
+                  final formatter = NumberFormat('#,##0');
 
                   return StreamBuilder<double>(
                     stream: _service.getWalletBalanceStream(),
@@ -182,7 +196,7 @@ class _PortfolioPageState extends State<PortfolioPage> {
                             children: [
                               const Text('My Wallet Balance', style: TextStyle(color: Colors.white70, fontSize: 16)),
                               const SizedBox(height: 8),
-                              Text('฿ ${walletBalance.toStringAsFixed(0)}', 
+                              Text('฿ ${formatter.format(walletBalance)}', 
                                 style: const TextStyle(color: Colors.white, fontSize: 36, fontWeight: FontWeight.bold)),
                               const SizedBox(height: 16),
                               Row(
@@ -233,8 +247,36 @@ class _PortfolioPageState extends State<PortfolioPage> {
                               const Divider(color: Colors.white24, height: 32),
                               const Text('Estimated Value', style: TextStyle(color: Colors.white70, fontSize: 16)),
                               const SizedBox(height: 8),
-                              Text('฿ ${totalValue.toInt()}', 
+                              Text('฿ ${formatter.format(totalValue)}', 
                                 style: const TextStyle(color: Color(0xFFFFD700), fontSize: 28, fontWeight: FontWeight.bold)),
+                              const SizedBox(height: 16),
+                              Container(
+                                padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+                                decoration: BoxDecoration(
+                                  color: pnlColor.withOpacity(0.2),
+                                  borderRadius: BorderRadius.circular(20),
+                                  border: Border.all(color: pnlColor.withOpacity(0.5)),
+                                ),
+                                child: Row(
+                                  mainAxisSize: MainAxisSize.min,
+                                  children: [
+                                    Icon(
+                                      isProfit ? Icons.trending_up : Icons.trending_down,
+                                      color: pnlColor,
+                                      size: 20,
+                                    ),
+                                    const SizedBox(width: 8),
+                                    Text(
+                                      'Total PnL: $pnlSign฿${formatter.format(pnl.abs())} ($pnlSign${pnlPercentage.toStringAsFixed(2)}%)',
+                                      style: TextStyle(
+                                        color: pnlColor,
+                                        fontWeight: FontWeight.bold,
+                                        fontSize: 16,
+                                      ),
+                                    ),
+                                  ],
+                                ),
+                              ),
                             ],
                           ),
                         ),
@@ -336,6 +378,7 @@ class _PortfolioPageState extends State<PortfolioPage> {
   Widget _buildSavingsAssetCard(GoldSavingsAccount account, double currentBuyPrice) {
     double currentVal = account.totalWeightSaved * currentBuyPrice;
     double profit = currentVal - account.totalAmountInvested;
+    final formatter = NumberFormat('#,##0');
 
     return Card(
       margin: const EdgeInsets.only(bottom: 12),
@@ -371,7 +414,7 @@ class _PortfolioPageState extends State<PortfolioPage> {
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
                     const Text('Fractional Gold Savings', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16)),
-                    Text('${account.totalWeightSaved.toStringAsFixed(4)} Baht • Invested ฿${account.totalAmountInvested.toInt()}', style: const TextStyle(fontSize: 12, color: Colors.grey)),
+                    Text('${account.totalWeightSaved.toStringAsFixed(4)} Baht • Invested ฿${formatter.format(account.totalAmountInvested)}', style: const TextStyle(fontSize: 12, color: Colors.grey)),
                   ],
                 ),
               ),
@@ -417,6 +460,7 @@ class _AssetCardState extends State<_AssetCard> {
   bool _isProcessing = false;
 
   void _showRedeemConfirmation(BuildContext context, double principal, double interest, double penalty, double totalOwed) {
+    final formatter = NumberFormat('#,##0');
     showDialog(
       context: context,
       barrierDismissible: !_isProcessing,
@@ -443,14 +487,14 @@ class _AssetCardState extends State<_AssetCard> {
                         mainAxisAlignment: MainAxisAlignment.spaceBetween,
                         children: [
                           const Text('Principal Loan:'),
-                          Text('฿ ${principal.toStringAsFixed(0)}'),
+                          Text('฿ ${formatter.format(principal)}'),
                         ],
                       ),
                       Row(
                         mainAxisAlignment: MainAxisAlignment.spaceBetween,
                         children: [
                           const Text('Standard Interest:'),
-                          Text('฿ ${interest.toStringAsFixed(0)}'),
+                          Text('฿ ${formatter.format(interest)}'),
                         ],
                       ),
                       if (penalty > 0) ...[
@@ -458,7 +502,7 @@ class _AssetCardState extends State<_AssetCard> {
                           mainAxisAlignment: MainAxisAlignment.spaceBetween,
                           children: [
                             const Text('Overdue Penalty:', style: TextStyle(color: Colors.red)),
-                            Text('฿ ${penalty.toStringAsFixed(0)}', style: const TextStyle(color: Colors.red)),
+                            Text('฿ ${formatter.format(penalty)}', style: const TextStyle(color: Colors.red)),
                           ],
                         ),
                       ],
@@ -467,13 +511,13 @@ class _AssetCardState extends State<_AssetCard> {
                         mainAxisAlignment: MainAxisAlignment.spaceBetween,
                         children: [
                           const Text('Total to Pay:', style: TextStyle(fontWeight: FontWeight.bold)),
-                          Text('฿ ${totalOwed.toStringAsFixed(0)}', style: const TextStyle(color: Colors.red, fontWeight: FontWeight.bold)),
+                          Text('฿ ${formatter.format(totalOwed)}', style: const TextStyle(color: Colors.red, fontWeight: FontWeight.bold)),
                         ],
                       ),
                       const SizedBox(height: 16),
                       if (hasEnoughFunds) ...[
                         const Text('Estimated New Balance:', style: TextStyle(fontWeight: FontWeight.bold)),
-                        Text('฿ ${newBalance.toStringAsFixed(0)}', style: const TextStyle(color: Colors.blue, fontSize: 16, fontWeight: FontWeight.bold)),
+                        Text('฿ ${formatter.format(newBalance)}', style: const TextStyle(color: Colors.blue, fontSize: 16, fontWeight: FontWeight.bold)),
                       ] else ...[
                         const Text(
                           'Insufficient funds in wallet to redeem. Please deposit more money.',
@@ -533,6 +577,7 @@ class _AssetCardState extends State<_AssetCard> {
   }
 
   void _showSellConfirmation(BuildContext context, double estimatedValue) {
+    final formatter = NumberFormat('#,##0');
     showDialog(
       context: context,
       barrierDismissible: !_isProcessing,

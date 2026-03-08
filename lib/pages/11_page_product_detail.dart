@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:intl/intl.dart';
 import '../models/product.dart';
 import '../models/gold_rate.dart';
 import '../models/gold_transaction.dart';
@@ -17,6 +18,7 @@ class ProductDetailPage extends StatefulWidget {
 class _ProductDetailPageState extends State<ProductDetailPage> {
   final MockService _service = MockService();
   bool _isProcessing = false;
+  int _quantity = 1;
 
   void _showCheckoutBottomSheet(BuildContext context, double totalPrice) {
     showModalBottomSheet(
@@ -45,41 +47,58 @@ class _ProductDetailPageState extends State<ProductDetailPage> {
                     mainAxisSize: MainAxisSize.min,
                     crossAxisAlignment: CrossAxisAlignment.stretch,
                     children: [
-                  const Text('Order Summary', style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold)),
-                  const SizedBox(height: 16),
-                  _summaryRow('Item', widget.product.name),
-                  _summaryRow('Weight', '${widget.product.weight} Baht'),
-                  _summaryRow('Gold Price', '฿ ${((widget.product.weight * (widget.currentRate?.sellPrice ?? 0))).toStringAsFixed(0)}'),
-                  _summaryRow('Labor Fee', '฿ ${widget.product.laborFee.toStringAsFixed(0)}'),
-                  const Divider(height: 32),
-                  _summaryRow('Total Cost', '฿ ${totalPrice.toStringAsFixed(0)}', isBold: true),
-                  if (hasEnoughFunds)
-                    _summaryRow('Estimated Remaining Balance', '฿ ${(balance - totalPrice).toStringAsFixed(0)}', isBold: true),
-                  const SizedBox(height: 32),
-                  if (!hasEnoughFunds)
-                    const Padding(
-                      padding: EdgeInsets.only(bottom: 16.0),
-                      child: Text(
-                        'Insufficient funds. Please check your wallet balance.',
-                        style: TextStyle(color: Colors.red, fontWeight: FontWeight.bold),
-                        textAlign: TextAlign.center,
+                      Container(
+                        decoration: BoxDecoration(
+                          color: Colors.white,
+                          borderRadius: BorderRadius.circular(16),
+                          boxShadow: [
+                            BoxShadow(color: Colors.black.withOpacity(0.05), blurRadius: 10, offset: const Offset(0, 5)),
+                          ],
+                        ),
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            const Text('Payment Summary', style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold, color: Color(0xFF600000))),
+                            const SizedBox(height: 16),
+                            _summaryRow('Item', widget.product.name),
+                            _summaryRow('Quantity', '$_quantity'),
+                            _summaryRow('Weight', '${widget.product.weight * _quantity} Baht'),
+                            _summaryRow('Gold Price', '฿ ${NumberFormat('#,##0').format(widget.product.weight * (widget.currentRate?.sellPrice ?? 0) * _quantity)}'),
+                            _summaryRow('Labor Fee', '฿ ${NumberFormat('#,##0').format(widget.product.laborFee * _quantity)}'),
+                            const Divider(height: 24),
+                            _summaryRow('Total Cost', '฿ ${NumberFormat('#,##0').format(totalPrice)}', isBold: true),
+                            if (balance >= totalPrice) ...[
+                              _summaryRow('Estimated Remaining Balance', '฿ ${NumberFormat('#,##0').format(balance - totalPrice)}', isBold: true),
+                            ] else ...[
+                              const SizedBox(height: 8),
+                              const Padding(
+                                padding: EdgeInsets.only(bottom: 16.0),
+                                child: Text(
+                                  'Insufficient funds. Please check your wallet balance.',
+                                  style: TextStyle(color: Colors.red, fontWeight: FontWeight.bold),
+                                  textAlign: TextAlign.center,
+                                ),
+                              ),
+                            ],
+                          ],
+                        ),
                       ),
-                    ),
-                  ElevatedButton(
-                    onPressed: (_isProcessing || !hasEnoughFunds) 
-                      ? null 
-                      : () async {
+                      const SizedBox(height: 32),
+                      ElevatedButton(
+                        onPressed: (_isProcessing || !hasEnoughFunds)
+                            ? null
+                            : () async {
                           setModalState(() => _isProcessing = true);
                           try {
                             await _service.createTransaction(
                               assetName: widget.product.name,
-                              weight: widget.product.weight,
+                              weight: widget.product.weight * _quantity,
                               amount: totalPrice,
                               type: TransactionType.buy,
                               category: widget.product.category,
                               productId: widget.product.id,
                             );
-                            
+
                             if (mounted) {
                               Navigator.pop(context); // Close bottom sheet
                               ScaffoldMessenger.of(context).showSnackBar(
@@ -99,20 +118,20 @@ class _ProductDetailPageState extends State<ProductDetailPage> {
                             }
                           }
                         },
-                    style: ElevatedButton.styleFrom(
-                      padding: const EdgeInsets.symmetric(vertical: 16),
-                      backgroundColor: hasEnoughFunds ? const Color(0xFF800000) : Colors.grey,
-                      foregroundColor: Colors.white,
-                      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-                    ),
-                    child: _isProcessing 
-                      ? const SizedBox(width: 24, height: 24, child: CircularProgressIndicator(color: Colors.white, strokeWidth: 2))
-                      : const Text('Confirm Purchase', style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
+                        style: ElevatedButton.styleFrom(
+                          padding: const EdgeInsets.symmetric(vertical: 16),
+                          backgroundColor: hasEnoughFunds ? const Color(0xFF800000) : Colors.grey,
+                          foregroundColor: Colors.white,
+                          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                        ),
+                        child: _isProcessing
+                            ? const SizedBox(width: 24, height: 24, child: CircularProgressIndicator(color: Colors.white, strokeWidth: 2))
+                            : const Text('Confirm Purchase', style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
+                      ),
+                      const SizedBox(height: 32),
+                    ],
                   ),
-                  const SizedBox(height: 32),
-                ],
-              ),
-            );
+                );
               }
             );
           }
@@ -137,7 +156,8 @@ class _ProductDetailPageState extends State<ProductDetailPage> {
   @override
   Widget build(BuildContext context) {
     double basePrice = widget.currentRate != null ? (widget.product.weight * widget.currentRate!.sellPrice) : 0;
-    double totalPrice = basePrice + widget.product.laborFee;
+    double unitPrice = basePrice + widget.product.laborFee;
+    double totalPrice = unitPrice * _quantity;
     bool isOutOfStock = widget.product.stock <= 0;
 
     return Scaffold(
@@ -188,7 +208,7 @@ class _ProductDetailPageState extends State<ProductDetailPage> {
                       ),
                     ],
                   ),
-                  const SizedBox(height: 16),
+                  const SizedBox(height: 8),
                   Row(
                     mainAxisAlignment: MainAxisAlignment.spaceBetween,
                     children: [
@@ -198,7 +218,7 @@ class _ProductDetailPageState extends State<ProductDetailPage> {
                       ),
                       if (widget.currentRate != null)
                         Text(
-                          '฿ ${totalPrice.toStringAsFixed(0)}',
+                          '฿ ${NumberFormat('#,##0').format(unitPrice)}',
                           style: TextStyle(
                               fontSize: 28,
                               fontWeight: FontWeight.bold,
@@ -208,13 +228,53 @@ class _ProductDetailPageState extends State<ProductDetailPage> {
                         const CircularProgressIndicator(),
                     ],
                   ),
+                  const SizedBox(height: 24),
+                  
+                  // Quantity Selector
+                  Row(
+                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                    children: [
+                      Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          const Text('Quantity', style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
+                          const SizedBox(height: 4),
+                          Text('Total: ฿ ${NumberFormat('#,##0').format(totalPrice)}',
+                              style: const TextStyle(color: Color(0xFF600000), fontSize: 16, fontWeight: FontWeight.bold)),
+                        ],
+                      ),
+                      Container(
+                        decoration: BoxDecoration(
+                          border: Border.all(color: Colors.grey[300]!),
+                          borderRadius: BorderRadius.circular(8),
+                        ),
+                        child: Row(
+                          children: [
+                            IconButton(
+                              icon: const Icon(Icons.remove),
+                              onPressed: _quantity > 1
+                                  ? () => setState(() => _quantity--)
+                                  : null,
+                            ),
+                            Text('$_quantity', style: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
+                            IconButton(
+                              icon: const Icon(Icons.add),
+                              onPressed: _quantity < widget.product.stock
+                                  ? () => setState(() => _quantity++)
+                                  : null,
+                            ),
+                          ],
+                        ),
+                      ),
+                    ],
+                  ),
                   const Divider(height: 32),
                   const Text('Price Breakdown', style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold)),
                   const SizedBox(height: 8),
                   if (widget.currentRate != null) ...[
-                    _summaryRow('Current Gold Rate', '฿ ${widget.currentRate!.sellPrice.toStringAsFixed(0)} / Baht'),
-                    _summaryRow('Gold Value (${widget.product.weight}x)', '฿ ${basePrice.toStringAsFixed(0)}'),
-                    _summaryRow('Labor Fee', '฿ ${widget.product.laborFee.toStringAsFixed(0)}'),
+                    _summaryRow('Current Gold Rate', '฿ ${NumberFormat('#,##0').format(widget.currentRate!.sellPrice)} / Baht'),
+                    _summaryRow('Gold Value (${widget.product.weight}x)', '฿ ${NumberFormat('#,##0').format(basePrice)}'),
+                    _summaryRow('Labor Fee', '฿ ${NumberFormat('#,##0').format(widget.product.laborFee)}'),
                   ],
                   const SizedBox(height: 24),
                   const Text('Description', style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),

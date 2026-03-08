@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:intl/intl.dart';
 import '../models/product.dart';
 import '../models/gold_rate.dart';
 
@@ -96,11 +97,11 @@ class ProductCard extends StatelessWidget {
                   const SizedBox(height: 4),
                   if (currentRate != null)
                     Text(
-                      '฿${totalPrice.toStringAsFixed(0)}',
-                      style: TextStyle(
-                        color: isOutOfStock ? Colors.grey : Theme.of(context).primaryColor,
+                      '฿${NumberFormat('#,##0').format(totalPrice)}',
+                      style: const TextStyle(
+                        fontSize: 18,
                         fontWeight: FontWeight.bold,
-                        fontSize: 16,
+                        color: Color(0xFF600000),
                       ),
                     )
                   else

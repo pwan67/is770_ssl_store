@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:intl/intl.dart';
 import '../models/gold_rate.dart';
 
 class GoldRateCard extends StatelessWidget {
@@ -76,20 +77,13 @@ class GoldRateCard extends StatelessWidget {
   Widget _buildPriceColumn(String label, double price) {
     return Column(
       children: [
-        Text(
-          label, 
-          style: const TextStyle(
-            color: Colors.white, 
-            fontSize: 16,
-            fontWeight: FontWeight.bold
-          )
-        ),
+        Text(label, style: const TextStyle(color: Colors.white70, fontSize: 16)),
         const SizedBox(height: 4),
         Text(
-          price.toStringAsFixed(0),
+          NumberFormat('#,##0').format(price),
           style: const TextStyle(
-            color: Color(0xFFFFD700), 
-            fontSize: 36, 
+            color: Colors.white,
+            fontSize: 28,
             fontWeight: FontWeight.bold,
             fontFamily: 'Courier', // LED style
             letterSpacing: 2,

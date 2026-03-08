@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:intl/intl.dart';
 import '../models/product.dart';
 
 class InquiryPage extends StatefulWidget {
@@ -51,8 +52,9 @@ class _InquiryPageState extends State<InquiryPage> {
                 color: Colors.amber[50],
                 child: ListTile(
                   leading: const Icon(Icons.shopping_bag, color: Colors.amber),
-                  title: Text(widget.product!.name),
-                  subtitle: Text('฿${widget.product!.price.toStringAsFixed(0)}'),
+                  title: const Text('Product Selection'),
+                  subtitle: Text('฿${NumberFormat('#,##0').format(widget.product!.price)}'),
+                  trailing: const Icon(Icons.check_circle, color: Colors.green),
                 ),
               ),
             const Text(
