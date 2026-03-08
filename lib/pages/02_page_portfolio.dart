@@ -160,7 +160,8 @@ class _PortfolioPageState extends State<PortfolioPage> {
                   final double pnlPercentage = totalCost > 0 ? (pnl / totalCost) * 100 : 0.0;
                   
                   final bool isProfit = pnl >= 0;
-                  final Color pnlColor = isProfit ? const Color(0xFF4CAF50) : const Color(0xFFE53935);
+                  final Color pnlColor = isProfit ? const Color(0xFF00C853) : const Color(0xFFD32F2F); // High contrast Green/Red
+                  final Color pnlBgColor = Colors.white; // Solid white pill background for maximum legibility
                   final String pnlSign = isProfit ? '+' : '';
                   final formatter = NumberFormat('#,##0');
 
@@ -251,11 +252,17 @@ class _PortfolioPageState extends State<PortfolioPage> {
                                 style: const TextStyle(color: Color(0xFFFFD700), fontSize: 28, fontWeight: FontWeight.bold)),
                               const SizedBox(height: 16),
                               Container(
-                                padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+                                padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
                                 decoration: BoxDecoration(
-                                  color: pnlColor.withOpacity(0.2),
+                                  color: pnlBgColor, 
                                   borderRadius: BorderRadius.circular(20),
-                                  border: Border.all(color: pnlColor.withOpacity(0.5)),
+                                  boxShadow: [
+                                    BoxShadow(
+                                      color: Colors.black.withOpacity(0.1),
+                                      blurRadius: 4,
+                                      offset: const Offset(0, 2),
+                                    )
+                                  ],
                                 ),
                                 child: Row(
                                   mainAxisSize: MainAxisSize.min,
@@ -267,7 +274,7 @@ class _PortfolioPageState extends State<PortfolioPage> {
                                     ),
                                     const SizedBox(width: 8),
                                     Text(
-                                      'Total PnL: $pnlSign฿${formatter.format(pnl.abs())} ($pnlSign${pnlPercentage.toStringAsFixed(2)}%)',
+                                      'Profit/Loss: $pnlSign฿${formatter.format(pnl.abs())} ($pnlSign${pnlPercentage.toStringAsFixed(2)}%)',
                                       style: TextStyle(
                                         color: pnlColor,
                                         fontWeight: FontWeight.bold,
