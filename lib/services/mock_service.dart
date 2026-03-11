@@ -16,8 +16,14 @@ import '../models/gold_savings.dart';
 
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:firebase_storage/firebase_storage.dart';
-import 'dart:typed_data';
+import 'wallet_service.dart';
+import 'id_generator_service.dart';
+import '../models/wallet_transaction.dart';
+
 class MockService {
+  final WalletService _walletService = WalletService();
+  final IdGeneratorService _idGeneratorService = IdGeneratorService();
+
   // Singleton pattern
   static final MockService _instance = MockService._internal();
   factory MockService() => _instance;
@@ -31,29 +37,43 @@ class MockService {
     final newsList = [
       {
         'title': 'Why Gold is the Best Safe Haven Asset?',
-        'summary': 'In times of economic uncertainty, gold is the answer. Maintain your wealth value...',
-        'imageUrl': 'https://via.placeholder.com/150x150/FFD700/000000?text=Safe+Haven',
-        'date': Timestamp.fromDate(DateTime.now().subtract(const Duration(days: 1))),
+        'summary':
+            'In times of economic uncertainty, gold is the answer. Maintain your wealth value...',
+        'imageUrl':
+            'https://via.placeholder.com/150x150/FFD700/000000?text=Safe+Haven',
+        'date': Timestamp.fromDate(
+          DateTime.now().subtract(const Duration(days: 1)),
+        ),
         'content': 'Full article content about safe haven...',
       },
       {
         'title': 'Gold Price Analysis: Upward Trend continues',
-        'summary': 'Experts predict continued growth for gold prices this quarter due to global factors.',
-        'imageUrl': 'https://via.placeholder.com/150x150/800000/FFFFFF?text=Price+Up',
-        'date': Timestamp.fromDate(DateTime.now().subtract(const Duration(days: 3))),
+        'summary':
+            'Experts predict continued growth for gold prices this quarter due to global factors.',
+        'imageUrl':
+            'https://via.placeholder.com/150x150/800000/FFFFFF?text=Price+Up',
+        'date': Timestamp.fromDate(
+          DateTime.now().subtract(const Duration(days: 3)),
+        ),
         'content': 'Full analysis content...',
       },
       {
         'title': 'Understanding 96.5% vs 99.99% Gold',
-        'summary': 'What is the difference and which one is right for investment? Let us explain.',
-        'imageUrl': 'https://via.placeholder.com/150x150/FFA000/000000?text=Gold+Standard',
-        'date': Timestamp.fromDate(DateTime.now().subtract(const Duration(days: 5))),
+        'summary':
+            'What is the difference and which one is right for investment? Let us explain.',
+        'imageUrl':
+            'https://via.placeholder.com/150x150/FFA000/000000?text=Gold+Standard',
+        'date': Timestamp.fromDate(
+          DateTime.now().subtract(const Duration(days: 5)),
+        ),
         'content': 'Full educational content...',
       },
     ];
 
     for (int i = 0; i < newsList.length; i++) {
-      final docRef = FirebaseFirestore.instance.collection('news').doc('news_$i');
+      final docRef = FirebaseFirestore.instance
+          .collection('news')
+          .doc('news_$i');
       batch.set(docRef, newsList[i]);
     }
     await batch.commit();
@@ -62,7 +82,7 @@ class MockService {
   // Live Cloud News Stream
   Stream<List<NewsItem>> getNewsStream() {
     final collection = FirebaseFirestore.instance.collection('news');
-    
+
     // Auto-generate if empty
     collection.limit(1).get().then((snapshot) {
       if (snapshot.docs.isEmpty) {
@@ -70,10 +90,9 @@ class MockService {
       }
     });
 
-    return collection
-        .orderBy('date', descending: true)
-        .snapshots()
-        .map((snapshot) {
+    return collection.orderBy('date', descending: true).snapshots().map((
+      snapshot,
+    ) {
       return snapshot.docs.map((doc) {
         final data = doc.data();
         return NewsItem(
@@ -96,24 +115,29 @@ class MockService {
         'title': '50% Off Labor Fee\nApp Launch Special',
         'color': 0xFF800000,
         'textColor': 0xFFFFFFFF,
-        'image': 'https://via.placeholder.com/600x200/800000/FFFFFF?text=50%25+OFF',
+        'image':
+            'https://via.placeholder.com/600x200/800000/FFFFFF?text=50%25+OFF',
       },
       {
         'title': 'Golden Dragon Collection\nLunar New Year',
         'color': 0xFFFFD700,
         'textColor': 0xFF000000,
-        'image': 'https://via.placeholder.com/600x200/FFD700/000000?text=Dragon+Collection',
+        'image':
+            'https://via.placeholder.com/600x200/FFD700/000000?text=Dragon+Collection',
       },
       {
         'title': 'Easy Gold Savings\nStart at 100 THB',
         'color': 0xFF1E88E5,
         'textColor': 0xFFFFFFFF,
-        'image': 'https://via.placeholder.com/600x200/1E88E5/FFFFFF?text=Saving+Plan',
+        'image':
+            'https://via.placeholder.com/600x200/1E88E5/FFFFFF?text=Saving+Plan',
       },
     ];
-    
+
     for (int i = 0; i < promos.length; i++) {
-      final docRef = FirebaseFirestore.instance.collection('promotions').doc('promo_$i');
+      final docRef = FirebaseFirestore.instance
+          .collection('promotions')
+          .doc('promo_$i');
       batch.set(docRef, promos[i]);
     }
     await batch.commit();
@@ -122,7 +146,7 @@ class MockService {
   // Live Cloud Promotions Stream
   Stream<List<Map<String, dynamic>>> getPromotionsStream() {
     final collection = FirebaseFirestore.instance.collection('promotions');
-    
+
     // Auto-generate if empty
     collection.limit(1).get().then((snapshot) {
       if (snapshot.docs.isEmpty) {
@@ -151,52 +175,54 @@ class MockService {
         .doc('gold_rate')
         .snapshots()
         .map((snapshot) {
-      if (!snapshot.exists || snapshot.data() == null) {
-        final now = DateTime.now();
-        int hour = now.hour;
-        String period = 'AM';
-        if (hour >= 12) {
-          period = 'PM';
-          if (hour > 12) hour -= 12;
-        }
-        if (hour == 0) hour = 12;
-        String formattedTime = '$hour:${now.minute.toString().padLeft(2, '0')} $period';
+          if (!snapshot.exists || snapshot.data() == null) {
+            final now = DateTime.now();
+            int hour = now.hour;
+            String period = 'AM';
+            if (hour >= 12) {
+              period = 'PM';
+              if (hour > 12) hour -= 12;
+            }
+            if (hour == 0) hour = 12;
+            String formattedTime =
+                '$hour:${now.minute.toString().padLeft(2, '0')} $period';
 
-        return GoldRate(
-          buyPrice: 40000.0,
-          sellPrice: 40100.0,
-          timestamp: now,
-          updateTime: formattedTime,
-          trend: 'stable',
-        );
-      }
-      
-      final data = snapshot.data()!;
-      final buy = (data['buyPrice'] ?? 40000).toDouble();
-      final sell = (data['sellPrice'] ?? 40100).toDouble();
-      
-      Timestamp? ts = data['timestamp'] as Timestamp?;
-      final trend = data['trend'] as String? ?? 'stable';
-      final dateTime = ts?.toDate() ?? DateTime.now();
+            return GoldRate(
+              buyPrice: 40000.0,
+              sellPrice: 40100.0,
+              timestamp: now,
+              updateTime: formattedTime,
+              trend: 'stable',
+            );
+          }
 
-      int hour = dateTime.hour;
-      String period = 'AM';
-      if (hour >= 12) {
-        period = 'PM';
-        if (hour > 12) hour -= 12;
-      }
-      if (hour == 0) hour = 12;
-      
-      final formattedTimeStr = '$hour:${dateTime.minute.toString().padLeft(2, '0')} $period';
+          final data = snapshot.data()!;
+          final buy = (data['buyPrice'] ?? 40000).toDouble();
+          final sell = (data['sellPrice'] ?? 40100).toDouble();
 
-      return GoldRate(
-        buyPrice: buy,
-        sellPrice: sell,
-        timestamp: dateTime,
-        updateTime: formattedTimeStr,
-        trend: trend,
-      );
-    });
+          Timestamp? ts = data['timestamp'] as Timestamp?;
+          final trend = data['trend'] as String? ?? 'stable';
+          final dateTime = ts?.toDate() ?? DateTime.now();
+
+          int hour = dateTime.hour;
+          String period = 'AM';
+          if (hour >= 12) {
+            period = 'PM';
+            if (hour > 12) hour -= 12;
+          }
+          if (hour == 0) hour = 12;
+
+          final formattedTimeStr =
+              '$hour:${dateTime.minute.toString().padLeft(2, '0')} $period';
+
+          return GoldRate(
+            buyPrice: buy,
+            sellPrice: sell,
+            timestamp: dateTime,
+            updateTime: formattedTimeStr,
+            trend: trend,
+          );
+        });
   }
 
   // Cloud Assets & Transactions Streams
@@ -204,32 +230,47 @@ class MockService {
     final uid = currentUserId;
     if (uid == null) return Stream.value(0.0);
 
-    return FirebaseFirestore.instance
-        .collection('users')
-        .doc(uid)
-        .snapshots()
-        .map((snapshot) {
-      if (!snapshot.exists || snapshot.data() == null) return 0.0;
-      return (snapshot.data()!['walletBalance'] ?? 0.0 as num).toDouble();
-    });
+    return _walletService
+        .getWalletStream(uid)
+        .map((wallet) => wallet?.balance ?? 0.0);
   }
 
   Future<void> addFunds(double amount) async {
     final uid = currentUserId;
     if (uid == null) throw Exception('User not logged in');
-    
-    await FirebaseFirestore.instance.collection('users').doc(uid).set({
-      'walletBalance': FieldValue.increment(amount)
-    }, SetOptions(merge: true));
+
+    // Ensure wallet exists
+    await _walletService.createWalletForUser(uid);
+
+    // Find wallet ID
+    final walletQuery = await FirebaseFirestore.instance
+        .collection('wallets')
+        .where('userId', isEqualTo: uid)
+        .limit(1)
+        .get();
+    if (walletQuery.docs.isEmpty) throw Exception('Wallet not found');
+    final walletId = walletQuery.docs.first.id;
+
+    await _walletService.performTransaction(
+      walletId: walletId,
+      amount: amount,
+      type: WalletTransactionType.deposit,
+      description: 'Wallet Top-Up',
+    );
 
     // Add a notification
     final notifId = DateTime.now().millisecondsSinceEpoch.toString();
-    final notifRef = FirebaseFirestore.instance.collection('users').doc(uid).collection('notifications').doc('n_$notifId');
+    final notifRef = FirebaseFirestore.instance
+        .collection('users')
+        .doc(uid)
+        .collection('notifications')
+        .doc('n_$notifId');
     final formatter = NumberFormat('#,##0.00');
     final notif = NotificationItem(
       id: notifId,
       title: 'Wallet Top-Up',
-      message: 'Successfully deposited ฿${formatter.format(amount)} into your wallet.',
+      message:
+          'Successfully deposited ฿${formatter.format(amount)} into your wallet.',
       type: 'store',
       timestamp: DateTime.now(),
       isRead: false,
@@ -240,28 +281,35 @@ class MockService {
   Future<void> withdrawFunds(double amount) async {
     final uid = currentUserId;
     if (uid == null) throw Exception('User not logged in');
-    
-    // We ideally should check the balance transactionally, 
-    // but for this mock service a simple read then write is okay or just rely on UI validation.
-    final doc = await FirebaseFirestore.instance.collection('users').doc(uid).get();
-    final currentBalance = (doc.data()?['walletBalance'] ?? 0.0 as num).toDouble();
-    
-    if (currentBalance < amount) {
-      throw Exception('Insufficient funds to withdraw');
-    }
 
-    await FirebaseFirestore.instance.collection('users').doc(uid).set({
-      'walletBalance': FieldValue.increment(-amount)
-    }, SetOptions(merge: true));
+    final walletQuery = await FirebaseFirestore.instance
+        .collection('wallets')
+        .where('userId', isEqualTo: uid)
+        .limit(1)
+        .get();
+    if (walletQuery.docs.isEmpty) throw Exception('Wallet not found');
+    final walletId = walletQuery.docs.first.id;
+
+    await _walletService.performTransaction(
+      walletId: walletId,
+      amount: amount,
+      type: WalletTransactionType.withdrawal,
+      description: 'Wallet Withdrawal',
+    );
 
     // Add a notification
     final notifId = DateTime.now().millisecondsSinceEpoch.toString();
-    final notifRef = FirebaseFirestore.instance.collection('users').doc(uid).collection('notifications').doc('n_$notifId');
+    final notifRef = FirebaseFirestore.instance
+        .collection('users')
+        .doc(uid)
+        .collection('notifications')
+        .doc('n_$notifId');
     final formatter = NumberFormat('#,##0.00');
     final notif = NotificationItem(
       id: notifId,
       title: 'Wallet Withdrawal',
-      message: 'Successfully withdrew ฿${formatter.format(amount)} from your wallet.',
+      message:
+          'Successfully withdrew ฿${formatter.format(amount)} from your wallet.',
       type: 'store',
       timestamp: DateTime.now(),
       isRead: false,
@@ -272,11 +320,18 @@ class MockService {
   Future<Map<String, dynamic>> getUserProfile() async {
     final uid = currentUserId;
     if (uid == null) throw Exception('User not logged in');
-    final doc = await FirebaseFirestore.instance.collection('users').doc(uid).get();
+    final doc = await FirebaseFirestore.instance
+        .collection('users')
+        .doc(uid)
+        .get();
     return doc.data() ?? {};
   }
 
-  Future<void> updateUserProfile({required String firstName, required String lastName, required String phoneNumber}) async {
+  Future<void> updateUserProfile({
+    required String firstName,
+    required String lastName,
+    required String phoneNumber,
+  }) async {
     final uid = currentUserId;
     if (uid == null) throw Exception('User not logged in');
     final data = {
@@ -284,24 +339,38 @@ class MockService {
       'lastName': lastName,
       'phoneNumber': phoneNumber,
     };
-    await FirebaseFirestore.instance.collection('users').doc(uid).set(data, SetOptions(merge: true));
-    
+    await FirebaseFirestore.instance
+        .collection('users')
+        .doc(uid)
+        .set(data, SetOptions(merge: true));
+
     final user = FirebaseAuth.instance.currentUser;
     if (user != null) {
       await user.updateDisplayName('$firstName $lastName'.trim());
     }
   }
 
-  Future<String> uploadProfilePicture(Uint8List fileBytes, String extension) async {
+  Future<String> uploadProfilePicture(
+    Uint8List fileBytes,
+    String extension,
+  ) async {
     final uid = currentUserId;
     if (uid == null) throw Exception('User not logged in');
-    
-    final ref = FirebaseStorage.instance.ref().child('avatars').child('$uid.$extension');
-    final uploadTask = await ref.putData(fileBytes, SettableMetadata(contentType: 'image/$extension'));
+
+    final ref = FirebaseStorage.instance
+        .ref()
+        .child('avatars')
+        .child('$uid.$extension');
+    final uploadTask = await ref.putData(
+      fileBytes,
+      SettableMetadata(contentType: 'image/$extension'),
+    );
     final url = await uploadTask.ref.getDownloadURL();
-    
-    await FirebaseFirestore.instance.collection('users').doc(uid).set({'photoUrl': url}, SetOptions(merge: true));
-    
+
+    await FirebaseFirestore.instance.collection('users').doc(uid).set({
+      'photoUrl': url,
+    }, SetOptions(merge: true));
+
     final user = FirebaseAuth.instance.currentUser;
     if (user != null) {
       await user.updatePhotoURL(url);
@@ -319,23 +388,30 @@ class MockService {
         .collection('assets')
         .snapshots()
         .map((snapshot) {
-      return snapshot.docs.map((doc) {
-        final data = doc.data();
-        return GoldAsset(
-          id: doc.id,
-          name: data['name'] ?? 'Unknown Asset',
-          weight: (data['weight'] ?? 0 as num).toDouble(),
-          category: data['category'] ?? 'General',
-          acquisitionDate: (data['acquisitionDate'] as Timestamp?)?.toDate() ?? DateTime.now(),
-          acquisitionPrice: (data['acquisitionPrice'] ?? 0 as num).toDouble(),
-          status: data['status'] ?? 'owned',
-          loanAmount: data['loanAmount'] != null ? (data['loanAmount'] as num).toDouble() : null,
-          pawnDate: (data['pawnDate'] as Timestamp?)?.toDate(),
-          dueDate: (data['dueDate'] as Timestamp?)?.toDate(),
-          interestRate: data['interestRate'] != null ? (data['interestRate'] as num).toDouble() : null,
-        );
-      }).toList();
-    });
+          return snapshot.docs.map((doc) {
+            final data = doc.data();
+            return GoldAsset(
+              id: doc.id,
+              name: data['name'] ?? 'Unknown Asset',
+              weight: (data['weight'] ?? 0 as num).toDouble(),
+              category: data['category'] ?? 'General',
+              acquisitionDate:
+                  (data['acquisitionDate'] as Timestamp?)?.toDate() ??
+                  DateTime.now(),
+              acquisitionPrice: (data['acquisitionPrice'] ?? 0 as num)
+                  .toDouble(),
+              status: data['status'] ?? 'owned',
+              loanAmount: data['loanAmount'] != null
+                  ? (data['loanAmount'] as num).toDouble()
+                  : null,
+              pawnDate: (data['pawnDate'] as Timestamp?)?.toDate(),
+              dueDate: (data['dueDate'] as Timestamp?)?.toDate(),
+              interestRate: data['interestRate'] != null
+                  ? (data['interestRate'] as num).toDouble()
+                  : null,
+            );
+          }).toList();
+        });
   }
 
   Stream<List<GoldTransaction>> getTransactionHistoryStream() {
@@ -349,25 +425,33 @@ class MockService {
         .orderBy('timestamp', descending: true)
         .snapshots()
         .map((snapshot) {
-      return snapshot.docs.map((doc) {
-        final data = doc.data();
-        // Simple string to enum mapping
-        TransactionType type = TransactionType.buy;
-        if (data['type'] == 'sell') type = TransactionType.sell;
-        else if (data['type'] == 'pawn') type = TransactionType.pawn;
-        else if (data['type'] == 'redeem') type = TransactionType.redeem;
+          return snapshot.docs.map((doc) {
+            final data = doc.data();
+            // Simple string to enum mapping
+            TransactionType type = TransactionType.buy;
+            if (data['type'] == 'sell')
+              type = TransactionType.sell;
+            else if (data['type'] == 'pawn')
+              type = TransactionType.pawn;
+            else if (data['type'] == 'redeem')
+              type = TransactionType.redeem;
+            else if (data['type'] == 'savings_deposit')
+              type = TransactionType.savings_deposit;
+            else if (data['type'] == 'savings_withdraw')
+              type = TransactionType.savings_withdraw;
 
-        return GoldTransaction(
-          id: doc.id,
-          assetId: data['assetId'] ?? '',
-          type: type,
-          amount: (data['amount'] ?? 0 as num).toDouble(),
-          weight: (data['weight'] ?? 0 as num).toDouble(),
-          timestamp: (data['timestamp'] as Timestamp?)?.toDate() ?? DateTime.now(),
-          details: data['details'] ?? '',
-        );
-      }).toList();
-    });
+            return GoldTransaction(
+              id: doc.id,
+              assetId: data['assetId'] ?? '',
+              type: type,
+              amount: (data['amount'] ?? 0 as num).toDouble(),
+              weight: (data['weight'] ?? 0 as num).toDouble(),
+              timestamp:
+                  (data['timestamp'] as Timestamp?)?.toDate() ?? DateTime.now(),
+              details: data['details'] ?? '',
+            );
+          }).toList();
+        });
   }
 
   Stream<int> getRewardPointsStream() {
@@ -409,7 +493,7 @@ class MockService {
         timestamp: DateTime.now().subtract(const Duration(days: 1)),
         isRead: false,
       ),
-       NotificationItem(
+      NotificationItem(
         id: 'n4',
         title: 'Upcoming Appointment',
         message: 'Reminder: You have a pickup appointment tomorrow at 10:30.',
@@ -426,9 +510,13 @@ class MockService {
         isRead: true,
       ),
     ];
-    
+
     for (var n in notifs) {
-      final docRef = FirebaseFirestore.instance.collection('users').doc(uid).collection('notifications').doc(n.id);
+      final docRef = FirebaseFirestore.instance
+          .collection('users')
+          .doc(uid)
+          .collection('notifications')
+          .doc(n.id);
       batch.set(docRef, n.toMap());
     }
     await batch.commit();
@@ -438,8 +526,11 @@ class MockService {
     final uid = currentUserId;
     if (uid == null) return Stream.value([]);
 
-    final collection = FirebaseFirestore.instance.collection('users').doc(uid).collection('notifications');
-    
+    final collection = FirebaseFirestore.instance
+        .collection('users')
+        .doc(uid)
+        .collection('notifications');
+
     // Auto-generate if empty
     collection.limit(1).get().then((snapshot) {
       if (snapshot.docs.isEmpty) {
@@ -447,14 +538,15 @@ class MockService {
       }
     });
 
-    return collection
-        .orderBy('timestamp', descending: true)
-        .snapshots()
-        .map((snapshot) {
-      return snapshot.docs.map((doc) => NotificationItem.fromMap(doc.id, doc.data())).toList();
+    return collection.orderBy('timestamp', descending: true).snapshots().map((
+      snapshot,
+    ) {
+      return snapshot.docs
+          .map((doc) => NotificationItem.fromMap(doc.id, doc.data()))
+          .toList();
     });
   }
-  
+
   Future<void> markNotificationAsRead(String notificationId) async {
     final uid = currentUserId;
     if (uid == null) return;
@@ -469,12 +561,15 @@ class MockService {
   Future<void> markAllNotificationsAsRead() async {
     final uid = currentUserId;
     if (uid == null) return;
-    
-    final collection = FirebaseFirestore.instance.collection('users').doc(uid).collection('notifications');
+
+    final collection = FirebaseFirestore.instance
+        .collection('users')
+        .doc(uid)
+        .collection('notifications');
     final unreadDocs = await collection.where('isRead', isEqualTo: false).get();
-    
+
     if (unreadDocs.docs.isEmpty) return;
-    
+
     final batch = FirebaseFirestore.instance.batch();
     for (var doc in unreadDocs.docs) {
       batch.update(doc.reference, {'isRead': true});
@@ -485,7 +580,7 @@ class MockService {
   Future<void> deleteNotification(String notificationId) async {
     final uid = currentUserId;
     if (uid == null) return;
-    
+
     await FirebaseFirestore.instance
         .collection('users')
         .doc(uid)
@@ -497,12 +592,15 @@ class MockService {
   Future<void> clearAllNotifications() async {
     final uid = currentUserId;
     if (uid == null) return;
-    
-    final collection = FirebaseFirestore.instance.collection('users').doc(uid).collection('notifications');
+
+    final collection = FirebaseFirestore.instance
+        .collection('users')
+        .doc(uid)
+        .collection('notifications');
     final allDocs = await collection.get();
-    
+
     if (allDocs.docs.isEmpty) return;
-    
+
     final batch = FirebaseFirestore.instance.batch();
     for (var doc in allDocs.docs) {
       batch.delete(doc.reference);
@@ -524,92 +622,125 @@ class MockService {
     final uid = currentUserId;
     if (uid == null) throw Exception('User not logged in');
 
-    final id = DateTime.now().millisecondsSinceEpoch.toString();
+    String prefix = 'TXN'; // Default fallback
+    if (type == TransactionType.buy)
+      prefix = 'BUY';
+    else if (type == TransactionType.sell)
+      prefix = 'SEL';
+    else if (type == TransactionType.pawn)
+      prefix = 'PWN';
+    else if (type == TransactionType.redeem)
+      prefix = 'RED';
 
-    if (type == TransactionType.buy) {
-      // Check Wallet Balance First
-      final userDoc = await FirebaseFirestore.instance.collection('users').doc(uid).get();
-      final currentBalance = (userDoc.data()?['walletBalance'] ?? 0.0 as num).toDouble();
-      
-      if (currentBalance < amount) {
-        throw Exception('Insufficient funds. Please deposit money into your wallet.');
-      }
+    final id = await _idGeneratorService.generateId('tx_counter', prefix);
 
-      // Deduct from wallet
-      await FirebaseFirestore.instance.collection('users').doc(uid).set({
-        'walletBalance': FieldValue.increment(-amount)
-      }, SetOptions(merge: true));
+    try {
+      await FirebaseFirestore.instance.runTransaction((transaction) async {
+        if (type == TransactionType.buy) {
+          final walletQuery = await FirebaseFirestore.instance
+              .collection('wallets')
+              .where('userId', isEqualTo: uid)
+              .limit(1)
+              .get();
+          if (walletQuery.docs.isEmpty)
+            throw Exception('Wallet not found. Please top up first.');
 
-      // Real Database Write: Deduct Stock
-      if (productId != null) {
-        try {
-           final docRef = FirebaseFirestore.instance.collection('products').doc(productId);
-           // Ask Firestore to atomically guarantee the stock goes down by exactly 1
-           await docRef.update({'stock': FieldValue.increment(-1)});
-        } catch (e) {
-          print('Error reducing stock: $e');
+          // 1. Read Product Stock if applicable
+          DocumentSnapshot? productDoc;
+          if (productId != null) {
+            productDoc = await transaction.get(
+              FirebaseFirestore.instance.collection('products').doc(productId),
+            );
+            if (!productDoc.exists) throw Exception('Product not found.');
+            if ((productDoc.data() as Map<String, dynamic>)['stock'] <= 0)
+              throw Exception('Product is out of stock.');
+          }
+
+          // 2. Perform Wallet Transaction (Deduct Funds)
+          await _walletService.performTransactionWithTx(
+            transaction: transaction,
+            walletId: walletQuery.docs.first.id,
+            amount: amount,
+            type: WalletTransactionType.purchase,
+            description: 'Purchase: $assetName',
+          );
+
+          // 3. Deduct Stock
+          if (productId != null && productDoc != null) {
+            transaction.update(productDoc.reference, {
+              'stock': FieldValue.increment(-1),
+            });
+          }
+
+          // 4. Create Asset in Portfolio
+          final assetRef = FirebaseFirestore.instance
+              .collection('users')
+              .doc(uid)
+              .collection('assets')
+              .doc('a$id');
+
+          final assetDoc = {
+            'name': assetName,
+            'weight': weight,
+            'category': category ?? 'General',
+            'acquisitionDate': FieldValue.serverTimestamp(),
+            'acquisitionPrice': amount,
+            'status': 'owned',
+          };
+          transaction.set(assetRef, assetDoc);
         }
-      }
 
-      // Convert to Firestore Document
-      final assetDoc = {
-        'name': assetName,
-        'weight': weight,
-        'category': category ?? 'General',
-        'acquisitionDate': FieldValue.serverTimestamp(),
-        'acquisitionPrice': amount,
-        'status': 'owned',
-      };
-      
-      // Write to Cloud Portfolio
-      await FirebaseFirestore.instance
-          .collection('users')
-          .doc(uid)
-          .collection('assets')
-          .doc('a$id')
-          .set(assetDoc);
+        // 5. Create Transaction Ledger (User specific)
+        final userTxRef = FirebaseFirestore.instance
+            .collection('users')
+            .doc(uid)
+            .collection('transactions')
+            .doc('t$id');
+
+        final transactionDoc = {
+          'assetId': 'a$id',
+          'type': type.name,
+          'amount': amount,
+          'weight': weight,
+          'timestamp': FieldValue.serverTimestamp(),
+          'details': '${type.name.toUpperCase()}: $assetName ($weight Baht)',
+        };
+        transaction.set(userTxRef, transactionDoc);
+
+        // 6. Create Global Transaction Record
+        final globalTxRef = FirebaseFirestore.instance
+            .collection('transactions')
+            .doc('t$id');
+
+        final globalTxDoc = Map<String, dynamic>.from(transactionDoc);
+        globalTxDoc['userId'] = uid;
+        globalTxDoc['userEmail'] =
+            FirebaseAuth.instance.currentUser?.email ?? 'Unknown Email';
+        transaction.set(globalTxRef, globalTxDoc);
+
+        // 7. Add Notification
+        final notifId = DateTime.now().millisecondsSinceEpoch.toString();
+        final notifRef = FirebaseFirestore.instance
+            .collection('users')
+            .doc(uid)
+            .collection('notifications')
+            .doc('n_$notifId');
+        final formatter = NumberFormat('#,##0.00');
+        final notif = NotificationItem(
+          id: notifId,
+          title: 'Transaction Successful',
+          message:
+              'Successfully completed ${type.name} for $assetName (${weight.toStringAsFixed(2)} Baht).',
+          type: type == TransactionType.buy ? 'store' : 'pawn',
+          timestamp: DateTime.now(),
+          isRead: false,
+        );
+        transaction.set(notifRef, notif.toMap());
+      });
+    } catch (e) {
+      print('Transaction failed: $e');
+      rethrow;
     }
-
-    final transactionDoc = {
-      'assetId': 'a$id',
-      'type': type.name,
-      'amount': amount,
-      'weight': weight,
-      'timestamp': FieldValue.serverTimestamp(),
-      'details': '${type.name.toUpperCase()}: $assetName ($weight Baht)',
-    };
-    
-    // Write to Cloud Transaction History
-    await FirebaseFirestore.instance
-        .collection('users')
-        .doc(uid)
-        .collection('transactions')
-        .doc('t$id')
-        .set(transactionDoc);
-        
-    // Write to global transactions collection for store admin visibility
-    final globalTxDoc = Map<String, dynamic>.from(transactionDoc);
-    globalTxDoc['userId'] = uid;
-    globalTxDoc['userEmail'] = FirebaseAuth.instance.currentUser?.email ?? 'Unknown Email';
-    
-    await FirebaseFirestore.instance
-        .collection('transactions')
-        .doc('t$id')
-        .set(globalTxDoc);
-
-    // Add a notification
-    final notifId = DateTime.now().millisecondsSinceEpoch.toString();
-    final notifRef = FirebaseFirestore.instance.collection('users').doc(uid).collection('notifications').doc('n_$notifId');
-    final formatter = NumberFormat('#,##0.00');
-    final notif = NotificationItem(
-      id: notifId,
-      title: 'Transaction Successful',
-      message: 'Successfully completed ${type.name} for $assetName (${weight.toStringAsFixed(2)} Baht).',
-      type: type == TransactionType.buy ? 'store' : 'pawn',
-      timestamp: DateTime.now(),
-      isRead: false,
-    );
-    await notifRef.set(notif.toMap());
   }
 
   Future<void> sellAsset({
@@ -619,64 +750,94 @@ class MockService {
     final uid = currentUserId;
     if (uid == null) throw Exception('User not logged in');
 
-    // Simulate network delay
-    await Future.delayed(const Duration(seconds: 1));
+    try {
+      await FirebaseFirestore.instance.runTransaction((transaction) async {
+        final walletQuery = await FirebaseFirestore.instance
+            .collection('wallets')
+            .where('userId', isEqualTo: uid)
+            .limit(1)
+            .get();
+        if (walletQuery.docs.isEmpty) throw Exception('Wallet not found');
 
-    // 1. Remove the asset from the user's portfolio
-    await FirebaseFirestore.instance
-        .collection('users')
-        .doc(uid)
-        .collection('assets')
-        .doc(asset.id)
-        .delete();
+        // 1. Get asset ref to delete
+        final assetRef = FirebaseFirestore.instance
+            .collection('users')
+            .doc(uid)
+            .collection('assets')
+            .doc(asset.id);
 
-    // 1.5 Add funds to wallet
-    await FirebaseFirestore.instance.collection('users').doc(uid).set({
-      'walletBalance': FieldValue.increment(sellPrice)
-    }, SetOptions(merge: true));
+        // Check if asset exists first
+        final assetDoc = await transaction.get(assetRef);
+        if (!assetDoc.exists) throw Exception('Asset not found in portfolio.');
 
-    // 2. Create the Sell Transaction record
-    final id = DateTime.now().millisecondsSinceEpoch.toString();
-    final transactionDoc = {
-      'assetId': asset.id,
-      'type': TransactionType.sell.name,
-      'amount': sellPrice,
-      'weight': asset.weight,
-      'timestamp': FieldValue.serverTimestamp(),
-      'details': 'SELL: ${asset.name} (${asset.weight} Baht)',
-    };
+        // 2. Perform Wallet Transaction (Add Funds)
+        await _walletService.performTransactionWithTx(
+          transaction: transaction,
+          walletId: walletQuery.docs.first.id,
+          amount: sellPrice,
+          type: WalletTransactionType.sale,
+          description: 'Asset Sale: ${asset.name}',
+        );
 
-    // Write to user transactions
-    await FirebaseFirestore.instance
-        .collection('users')
-        .doc(uid)
-        .collection('transactions')
-        .doc('t$id')
-        .set(transactionDoc);
+        // 3. Remove the asset from the user's portfolio
+        transaction.delete(assetRef);
 
-    // Write to global transactions for store admins
-    final globalTxDoc = Map<String, dynamic>.from(transactionDoc);
-    globalTxDoc['userId'] = uid;
-    globalTxDoc['userEmail'] = FirebaseAuth.instance.currentUser?.email ?? 'Unknown Email';
+        // 4. Create the Sell Transaction record
+        final id = await _idGeneratorService.generateId('tx_counter', 'SEL');
 
-    await FirebaseFirestore.instance
-        .collection('transactions')
-        .doc('t$id')
-        .set(globalTxDoc);
+        final userTxRef = FirebaseFirestore.instance
+            .collection('users')
+            .doc(uid)
+            .collection('transactions')
+            .doc('t$id');
 
-    // Add a notification
-    final notifId = DateTime.now().millisecondsSinceEpoch.toString();
-    final notifRef = FirebaseFirestore.instance.collection('users').doc(uid).collection('notifications').doc('n_$notifId');
-    final formatter = NumberFormat('#,##0.00');
-    final notif = NotificationItem(
-      id: notifId,
-      title: 'Asset Sold',
-      message: 'Successfully sold ${asset.name} for ฿${formatter.format(sellPrice)}.',
-      type: 'store',
-      timestamp: DateTime.now(),
-      isRead: false,
-    );
-    await notifRef.set(notif.toMap());
+        final transactionDoc = {
+          'assetId': asset.id,
+          'type': TransactionType.sell.name,
+          'amount': sellPrice,
+          'weight': asset.weight,
+          'timestamp': FieldValue.serverTimestamp(),
+          'details': 'SELL: ${asset.name} (${asset.weight} Baht)',
+        };
+
+        // Write to user transactions
+        transaction.set(userTxRef, transactionDoc);
+
+        // Write to global transactions for store admins
+        final globalTxRef = FirebaseFirestore.instance
+            .collection('transactions')
+            .doc('t$id');
+
+        final globalTxDoc = Map<String, dynamic>.from(transactionDoc);
+        globalTxDoc['userId'] = uid;
+        globalTxDoc['userEmail'] =
+            FirebaseAuth.instance.currentUser?.email ?? 'Unknown Email';
+
+        transaction.set(globalTxRef, globalTxDoc);
+
+        // 5. Add a notification
+        final notifId = DateTime.now().millisecondsSinceEpoch.toString();
+        final notifRef = FirebaseFirestore.instance
+            .collection('users')
+            .doc(uid)
+            .collection('notifications')
+            .doc('n_$notifId');
+        final formatter = NumberFormat('#,##0.00');
+        final notif = NotificationItem(
+          id: notifId,
+          title: 'Asset Sold',
+          message:
+              'Successfully sold ${asset.name} for ฿${formatter.format(sellPrice)}.',
+          type: 'store',
+          timestamp: DateTime.now(),
+          isRead: false,
+        );
+        transaction.set(notifRef, notif.toMap());
+      });
+    } catch (e) {
+      print('Sell Transaction failed: $e');
+      rethrow;
+    }
   }
 
   Future<void> pawnAsset({
@@ -686,69 +847,99 @@ class MockService {
     final uid = currentUserId;
     if (uid == null) throw Exception('User not logged in');
 
-    await Future.delayed(const Duration(seconds: 1));
+    try {
+      await FirebaseFirestore.instance.runTransaction((transaction) async {
+        final walletQuery = await FirebaseFirestore.instance
+            .collection('wallets')
+            .where('userId', isEqualTo: uid)
+            .limit(1)
+            .get();
+        if (walletQuery.docs.isEmpty) throw Exception('Wallet not found');
 
-    // 1. Update asset status to 'pawned' and attach loan data
-    final now = DateTime.now();
-    final dueDate = now.add(const Duration(days: 30));
-    final interestRate = 0.0125; // 1.25% monthly default
+        // 1. Get asset ref to verify and update
+        final assetRef = FirebaseFirestore.instance
+            .collection('users')
+            .doc(uid)
+            .collection('assets')
+            .doc(asset.id);
 
-    await FirebaseFirestore.instance
-        .collection('users')
-        .doc(uid)
-        .collection('assets')
-        .doc(asset.id)
-        .update({
-      'status': 'pawned',
-      'loanAmount': loanAmount,
-      'pawnDate': FieldValue.serverTimestamp(),
-      'dueDate': Timestamp.fromDate(dueDate),
-      'interestRate': interestRate,
-    });
+        final assetDoc = await transaction.get(assetRef);
+        if (!assetDoc.exists) throw Exception('Asset not found in portfolio.');
 
-    // 2. Add loan funds to wallet
-    await FirebaseFirestore.instance.collection('users').doc(uid).set({
-      'walletBalance': FieldValue.increment(loanAmount)
-    }, SetOptions(merge: true));
+        // 2. Perform Wallet Transaction (Add Loan Funds)
+        await _walletService.performTransactionWithTx(
+          transaction: transaction,
+          walletId: walletQuery.docs.first.id,
+          amount: loanAmount,
+          type: WalletTransactionType.deposit,
+          description: 'Pawn Loan: ${asset.name}',
+        );
 
-    // 3. Create Pawn Transaction
-    final id = DateTime.now().millisecondsSinceEpoch.toString();
-    final transactionDoc = {
-      'assetId': asset.id,
-      'type': TransactionType.pawn.name,
-      'amount': loanAmount,
-      'weight': asset.weight,
-      'timestamp': FieldValue.serverTimestamp(),
-      'details': 'PAWN: ${asset.name} (${asset.weight} Baht)',
-      'userId': uid,
-      'userEmail': FirebaseAuth.instance.currentUser?.email ?? 'Unknown Email',
-    };
+        // 3. Update asset status to 'pawned' and attach loan data
+        final now = DateTime.now();
+        final dueDate = now.add(const Duration(days: 30));
+        final interestRate = 0.0125; // 1.25% monthly default
 
-    await FirebaseFirestore.instance
-        .collection('users')
-        .doc(uid)
-        .collection('transactions')
-        .doc('t$id')
-        .set(transactionDoc);
+        transaction.update(assetRef, {
+          'status': 'pawned',
+          'loanAmount': loanAmount,
+          'pawnDate': FieldValue.serverTimestamp(),
+          'dueDate': Timestamp.fromDate(dueDate),
+          'interestRate': interestRate,
+        });
 
-    await FirebaseFirestore.instance
-        .collection('transactions')
-        .doc('t$id')
-        .set(transactionDoc);
+        // 4. Create Pawn Transaction
+        final id = await _idGeneratorService.generateId('tx_counter', 'PWN');
 
-    // Add a notification
-    final notifId = DateTime.now().millisecondsSinceEpoch.toString();
-    final notifRef = FirebaseFirestore.instance.collection('users').doc(uid).collection('notifications').doc('n_$notifId');
-    final formatter = NumberFormat('#,##0.00');
-    final notif = NotificationItem(
-      id: notifId,
-      title: 'Pawn Successful',
-      message: 'Successfully pawned ${asset.name} for a loan of ฿${formatter.format(loanAmount)}.',
-      type: 'pawn',
-      timestamp: DateTime.now(),
-      isRead: false,
-    );
-    await notifRef.set(notif.toMap());
+        final userTxRef = FirebaseFirestore.instance
+            .collection('users')
+            .doc(uid)
+            .collection('transactions')
+            .doc('t$id');
+
+        final transactionDoc = {
+          'assetId': asset.id,
+          'type': TransactionType.pawn.name,
+          'amount': loanAmount,
+          'weight': asset.weight,
+          'timestamp': FieldValue.serverTimestamp(),
+          'details': 'PAWN: ${asset.name} (${asset.weight} Baht)',
+          'userId': uid,
+          'userEmail':
+              FirebaseAuth.instance.currentUser?.email ?? 'Unknown Email',
+        };
+
+        transaction.set(userTxRef, transactionDoc);
+
+        final globalTxRef = FirebaseFirestore.instance
+            .collection('transactions')
+            .doc('t$id');
+
+        transaction.set(globalTxRef, transactionDoc);
+
+        // 5. Add a notification
+        final notifId = DateTime.now().millisecondsSinceEpoch.toString();
+        final notifRef = FirebaseFirestore.instance
+            .collection('users')
+            .doc(uid)
+            .collection('notifications')
+            .doc('n_$notifId');
+        final formatter = NumberFormat('#,##0.00');
+        final notif = NotificationItem(
+          id: notifId,
+          title: 'Pawn Successful',
+          message:
+              'Successfully pawned ${asset.name} for a loan of ฿${formatter.format(loanAmount)}.',
+          type: 'pawn',
+          timestamp: DateTime.now(),
+          isRead: false,
+        );
+        transaction.set(notifRef, notif.toMap());
+      });
+    } catch (e) {
+      print('Pawn Transaction failed: $e');
+      rethrow;
+    }
   }
 
   Future<void> redeemAsset({
@@ -758,73 +949,98 @@ class MockService {
     final uid = currentUserId;
     if (uid == null) throw Exception('User not logged in');
 
-    // 1. Check wallet balance
-    final userDoc = await FirebaseFirestore.instance.collection('users').doc(uid).get();
-    double currentBalance = (userDoc.data()?['walletBalance'] ?? 0.0).toDouble();
+    try {
+      await FirebaseFirestore.instance.runTransaction((transaction) async {
+        // 1 & 3 Check wallet balance & Deduct total owed from wallet safely
+        final walletQuery = await FirebaseFirestore.instance
+            .collection('wallets')
+            .where('userId', isEqualTo: uid)
+            .limit(1)
+            .get();
+        if (walletQuery.docs.isEmpty) throw Exception('Wallet not found');
 
-    if (currentBalance < totalOwed) {
-      throw Exception('Insufficient funds to redeem asset');
+        // Verify Asset exists and is pawned
+        final assetRef = FirebaseFirestore.instance
+            .collection('users')
+            .doc(uid)
+            .collection('assets')
+            .doc(asset.id);
+
+        final assetDoc = await transaction.get(assetRef);
+        if (!assetDoc.exists) throw Exception('Asset not found in portfolio.');
+        if ((assetDoc.data() as Map<String, dynamic>)['status'] != 'pawned') {
+          throw Exception('Asset is not currently pawned.');
+        }
+
+        await _walletService.performTransactionWithTx(
+          transaction: transaction,
+          walletId: walletQuery.docs.first.id,
+          amount: totalOwed,
+          type: WalletTransactionType.withdrawal,
+          description: 'Pawn Redemption: ${asset.name}',
+        );
+
+        // 2. Clear loan fields and revert status to 'owned'
+        transaction.update(assetRef, {
+          'status': 'owned',
+          'loanAmount': FieldValue.delete(),
+          'pawnDate': FieldValue.delete(),
+          'dueDate': FieldValue.delete(),
+          'interestRate': FieldValue.delete(),
+        });
+
+        // 4. Create Redeem Transaction
+        final id = await _idGeneratorService.generateId('tx_counter', 'RED');
+
+        final userTxRef = FirebaseFirestore.instance
+            .collection('users')
+            .doc(uid)
+            .collection('transactions')
+            .doc('t$id');
+
+        final transactionDoc = {
+          'assetId': asset.id,
+          'type': TransactionType.redeem.name,
+          'amount': totalOwed, // Representing cash paid
+          'weight': asset.weight,
+          'timestamp': FieldValue.serverTimestamp(),
+          'details': 'REDEEM: ${asset.name} (${asset.weight} Baht)',
+          'userId': uid,
+          'userEmail':
+              FirebaseAuth.instance.currentUser?.email ?? 'Unknown Email',
+        };
+
+        transaction.set(userTxRef, transactionDoc);
+
+        final globalTxRef = FirebaseFirestore.instance
+            .collection('transactions')
+            .doc('t$id');
+
+        transaction.set(globalTxRef, transactionDoc);
+
+        // 5. Add a notification
+        final notifId = DateTime.now().millisecondsSinceEpoch.toString();
+        final notifRef = FirebaseFirestore.instance
+            .collection('users')
+            .doc(uid)
+            .collection('notifications')
+            .doc('n_$notifId');
+        final formatter = NumberFormat('#,##0.00');
+        final notif = NotificationItem(
+          id: notifId,
+          title: 'Asset Redeemed',
+          message:
+              'Successfully redeemed ${asset.name}. Total paid: ฿${formatter.format(totalOwed)}.',
+          type: 'pawn',
+          timestamp: DateTime.now(),
+          isRead: false,
+        );
+        transaction.set(notifRef, notif.toMap());
+      });
+    } catch (e) {
+      print('Redeem Transaction failed: $e');
+      rethrow;
     }
-
-    await Future.delayed(const Duration(seconds: 1));
-
-    // 2. Clear loan fields and revert status to 'owned'
-    await FirebaseFirestore.instance
-        .collection('users')
-        .doc(uid)
-        .collection('assets')
-        .doc(asset.id)
-        .update({
-      'status': 'owned',
-      'loanAmount': FieldValue.delete(),
-      'pawnDate': FieldValue.delete(),
-      'dueDate': FieldValue.delete(),
-      'interestRate': FieldValue.delete(),
-    });
-
-    // 3. Deduct total owed from wallet
-    await FirebaseFirestore.instance.collection('users').doc(uid).update({
-      'walletBalance': FieldValue.increment(-totalOwed)
-    });
-
-    // 4. Create Redeem Transaction
-    final id = DateTime.now().millisecondsSinceEpoch.toString();
-    final transactionDoc = {
-      'assetId': asset.id,
-      'type': TransactionType.redeem.name,
-      'amount': totalOwed, // Representing cash paid
-      'weight': asset.weight,
-      'timestamp': FieldValue.serverTimestamp(),
-      'details': 'REDEEM: ${asset.name} (${asset.weight} Baht)',
-      'userId': uid,
-      'userEmail': FirebaseAuth.instance.currentUser?.email ?? 'Unknown Email',
-    };
-
-    await FirebaseFirestore.instance
-        .collection('users')
-        .doc(uid)
-        .collection('transactions')
-        .doc('t$id')
-        .set(transactionDoc);
-
-    await FirebaseFirestore.instance
-        .collection('transactions')
-        .doc('t$id')
-        .set(transactionDoc);
-
-    // Add a notification
-    final notifId = DateTime.now().millisecondsSinceEpoch.toString();
-    final notifRef = FirebaseFirestore.instance.collection('users').doc(uid).collection('notifications').doc('n_$notifId');
-    final formatter = NumberFormat('#,##0.00');
-    final notif = NotificationItem(
-      id: notifId,
-      title: 'Asset Redeemed',
-      message: 'Successfully redeemed ${asset.name}. Total paid: ฿${formatter.format(totalOwed)}.',
-      type: 'pawn',
-      timestamp: DateTime.now(),
-      isRead: false,
-    );
-    await notifRef.set(notif.toMap());
   }
 
   double calculatePawnLoan(double weight, double currentBuyPrice) {
@@ -832,23 +1048,28 @@ class MockService {
     return (weight * currentBuyPrice) * 0.85;
   }
 
-  Map<String, double> calculatePawnOwed(double principal, DateTime pawnDate, DateTime dueDate, double monthlyRate) {
+  Map<String, double> calculatePawnOwed(
+    double principal,
+    DateTime pawnDate,
+    DateTime dueDate,
+    double monthlyRate,
+  ) {
     final now = DateTime.now();
-    
+
     // Calculate standard interest
     int daysPawned = now.difference(pawnDate).inDays;
     if (daysPawned < 1) daysPawned = 1; // minimum 1 day interest for UI testing
     double standardInterest = principal * monthlyRate * (daysPawned / 30.0);
-    
+
     // Calculate penalty interest if overdue
     double penaltyInterest = 0.0;
-    if (now.isAfter(dueDate)) {     
+    if (now.isAfter(dueDate)) {
       int daysOverdue = now.difference(dueDate).inDays;
       // Example Penalty: 2% per month overdue
       double penaltyRate = 0.02;
       penaltyInterest = principal * penaltyRate * (daysOverdue / 30.0);
     }
-    
+
     return {
       'principal': principal,
       'standardInterest': standardInterest,
@@ -858,7 +1079,7 @@ class MockService {
   }
 
   // -- Appointments --
-  
+
   Stream<List<Appointment>> getAppointmentsStream() {
     final uid = currentUserId;
     if (uid == null) return Stream.value([]);
@@ -869,16 +1090,43 @@ class MockService {
         // Removed orderBy to prevent composite index requirements
         .snapshots()
         .map((snapshot) {
-      final list = snapshot.docs.map((doc) => Appointment.fromMap(doc.id, doc.data())).toList();
-      // Sort locally
-      list.sort((a, b) => a.date.compareTo(b.date));
-      return list;
-    });
+          final list = snapshot.docs
+              .map((doc) => Appointment.fromMap(doc.id, doc.data()))
+              .toList();
+          // Sort locally
+          list.sort((a, b) => a.date.compareTo(b.date));
+          return list;
+        });
+  }
+
+  Stream<List<Appointment>> getAllScheduledAppointmentsStream() {
+    return FirebaseFirestore.instance
+        .collection('appointments')
+        .where('status', isEqualTo: 'scheduled')
+        .snapshots()
+        .map((snapshot) {
+          final list = snapshot.docs
+              .map((doc) => Appointment.fromMap(doc.id, doc.data()))
+              .toList();
+          list.sort((a, b) => a.date.compareTo(b.date));
+          return list;
+        });
   }
 
   Future<List<Appointment>> getAppointmentsForDate(DateTime date) async {
-    final startOfDay = DateTime(date.year, date.month, date.day).toIso8601String();
-    final endOfDay = DateTime(date.year, date.month, date.day, 23, 59, 59).toIso8601String();
+    final startOfDay = DateTime(
+      date.year,
+      date.month,
+      date.day,
+    ).toIso8601String();
+    final endOfDay = DateTime(
+      date.year,
+      date.month,
+      date.day,
+      23,
+      59,
+      59,
+    ).toIso8601String();
 
     final snapshot = await FirebaseFirestore.instance
         .collection('appointments')
@@ -908,11 +1156,11 @@ class MockService {
         .collection('appointments')
         .where('date', isEqualTo: isoDateStart)
         .get();
-        
+
     final scheduledBookingsCount = existingParams.docs
         .where((d) => d.data()['status'] == 'scheduled')
         .length;
-        
+
     if (scheduledBookingsCount >= 2) {
       throw Exception('This time slot has reached maximum capacity.');
     }
@@ -939,9 +1187,7 @@ class MockService {
         .doc(uid)
         .collection('assets')
         .doc(asset.id)
-        .update({
-      'status': 'pickup_scheduled',
-    });
+        .update({'status': 'pickup_scheduled'});
   }
 
   Future<void> updateAppointment(String appointmentId, DateTime newDate) async {
@@ -954,11 +1200,13 @@ class MockService {
         .collection('appointments')
         .where('date', isEqualTo: isoDateStart)
         .get();
-        
+
     final scheduledBookingsCount = existingParams.docs
-        .where((d) => d.data()['status'] == 'scheduled' && d.id != appointmentId)
+        .where(
+          (d) => d.data()['status'] == 'scheduled' && d.id != appointmentId,
+        )
         .length;
-        
+
     if (scheduledBookingsCount >= 2) {
       throw Exception('This time slot has reached maximum capacity.');
     }
@@ -966,9 +1214,7 @@ class MockService {
     await FirebaseFirestore.instance
         .collection('appointments')
         .doc(appointmentId)
-        .update({
-      'date': newDate.toIso8601String(),
-    });
+        .update({'date': newDate.toIso8601String()});
   }
 
   Future<void> cancelAppointment(String appointmentId, String assetId) async {
@@ -979,23 +1225,26 @@ class MockService {
         .collection('appointments')
         .doc(appointmentId)
         .delete();
-
     await FirebaseFirestore.instance
         .collection('users')
         .doc(uid)
         .collection('assets')
         .doc(assetId)
-        .update({
-      'status': 'owned',
-    });
+        .update({'status': 'owned'});
+  }
+
+  Future<void> completeAppointment(String appointmentId) async {
+    await FirebaseFirestore.instance
+        .collection('appointments')
+        .doc(appointmentId)
+        .update({'status': 'completed'});
   }
 
   // Live Cloud Products Stream
   Stream<List<Product>> getProductsStream() {
-    return FirebaseFirestore.instance
-        .collection('products')
-        .snapshots()
-        .map((snapshot) {
+    return FirebaseFirestore.instance.collection('products').snapshots().map((
+      snapshot,
+    ) {
       return snapshot.docs.map((doc) {
         final data = doc.data();
         return Product(
@@ -1023,74 +1272,87 @@ class MockService {
       {
         'id': 'p1',
         'name': 'Classic Gold Chain',
-        'description': 'A timeless 96.5% pure gold necklace suitable for everyday wear. Features a durable hook clasp.',
+        'description':
+            'A timeless 96.5% pure gold necklace suitable for everyday wear. Features a durable hook clasp.',
         'price': 42000.0,
         'weight': 1.0,
         'laborFee': 1200.0,
         'stock': 15,
-        'imageUrl': 'https://somsrimanee.com/wp-content/uploads/2023/07/20240906-0370.jpg',
-        'category': 'Necklace'
+        'imageUrl':
+            'https://somsrimanee.com/wp-content/uploads/2023/07/20240906-0370.jpg',
+        'category': 'Necklace',
       },
       {
         'id': 'p2',
         'name': 'Dragon Carved Ring',
-        'description': 'Intricately designed gold ring featuring a traditional dragon motif. Perfect for special occasions.',
+        'description':
+            'Intricately designed gold ring featuring a traditional dragon motif. Perfect for special occasions.',
         'price': 21500.0,
         'weight': 0.5,
         'laborFee': 800.0,
         'stock': 8,
-        'imageUrl': 'https://somsrimanee.com/wp-content/uploads/2023/07/20240906-0158.jpg',
-        'category': 'Ring'
+        'imageUrl':
+            'https://somsrimanee.com/wp-content/uploads/2023/07/20240906-0158.jpg',
+        'category': 'Ring',
       },
       {
         'id': 'p3',
         'name': 'Simple Gold Bangle',
-        'description': 'Elegant solid gold bangle with a smooth polished finish.',
+        'description':
+            'Elegant solid gold bangle with a smooth polished finish.',
         'price': 84500.0,
         'weight': 2.0,
         'laborFee': 1500.0,
         'stock': 5,
-        'imageUrl': 'https://somsrimanee.com/wp-content/uploads/2023/07/20240906-0279-Edit.jpg',
-        'category': 'Bracelet'
+        'imageUrl':
+            'https://somsrimanee.com/wp-content/uploads/2023/07/20240906-0279-Edit.jpg',
+        'category': 'Bracelet',
       },
       {
         'id': 'p4',
         'name': 'Lotus Stud Earrings',
-        'description': 'Delicate gold stud earrings shaped like blooming lotus flowers.',
+        'description':
+            'Delicate gold stud earrings shaped like blooming lotus flowers.',
         'price': 10800.0,
         'weight': 0.25,
         'laborFee': 600.0,
         'stock': 20,
-        'imageUrl': 'https://somsrimanee.com/wp-content/uploads/2023/07/20240906-0209-Edit.jpg',
-        'category': 'Earrings'
+        'imageUrl':
+            'https://somsrimanee.com/wp-content/uploads/2023/07/20240906-0209-Edit.jpg',
+        'category': 'Earrings',
       },
       {
         'id': 'p5',
         'name': 'Ruby Embedded Ring',
-        'description': 'Premium gold ring featuring a small, high-quality ruby centerpiece.',
+        'description':
+            'Premium gold ring featuring a small, high-quality ruby centerpiece.',
         'price': 25000.0,
         'weight': 0.5,
         'laborFee': 2500.0,
         'stock': 3,
-        'imageUrl': 'https://somsrimanee.com/wp-content/uploads/2023/07/20240906-0164.jpg',
-        'category': 'Ring'
+        'imageUrl':
+            'https://somsrimanee.com/wp-content/uploads/2023/07/20240906-0164.jpg',
+        'category': 'Ring',
       },
     ];
 
     for (var p in dummyProducts) {
       batch.set(productsRef.doc(p['id'].toString()), p);
     }
-    
+
     await batch.commit();
   }
 
   // Search and Filter helper (to be used locally on the streamed list)
   List<Product> filterProducts(List<Product> allProducts, String query) {
     if (query.isEmpty) return allProducts;
-    return allProducts.where((p) =>
-      p.name.toLowerCase().contains(query.toLowerCase()) ||
-      p.category.toLowerCase().contains(query.toLowerCase())
-    ).toList();
+    return allProducts
+        .where(
+          (p) =>
+              p.name.toLowerCase().contains(query.toLowerCase()) ||
+              p.category.toLowerCase().contains(query.toLowerCase()),
+        )
+        .toList();
   }
 
   // ==== Gold Savings (ออมทอง) ====
@@ -1098,7 +1360,13 @@ class MockService {
   Stream<GoldSavingsAccount> getGoldSavingsAccountStream() {
     final uid = currentUserId;
     if (uid == null) {
-      return Stream.value(GoldSavingsAccount(totalWeightSaved: 0.0, totalAmountInvested: 0.0, lastUpdated: DateTime.now()));
+      return Stream.value(
+        GoldSavingsAccount(
+          totalWeightSaved: 0.0,
+          totalAmountInvested: 0.0,
+          lastUpdated: DateTime.now(),
+        ),
+      );
     }
 
     return FirebaseFirestore.instance
@@ -1108,11 +1376,15 @@ class MockService {
         .doc('account')
         .snapshots()
         .map((snapshot) {
-      if (!snapshot.exists || snapshot.data() == null) {
-        return GoldSavingsAccount(totalWeightSaved: 0.0, totalAmountInvested: 0.0, lastUpdated: DateTime.now());
-      }
-      return GoldSavingsAccount.fromMap(snapshot.data()!);
-    });
+          if (!snapshot.exists || snapshot.data() == null) {
+            return GoldSavingsAccount(
+              totalWeightSaved: 0.0,
+              totalAmountInvested: 0.0,
+              lastUpdated: DateTime.now(),
+            );
+          }
+          return GoldSavingsAccount.fromMap(snapshot.data()!);
+        });
   }
 
   Stream<List<GoldSavingsTransaction>> getGoldSavingsTransactionsStream() {
@@ -1128,19 +1400,28 @@ class MockService {
         .orderBy('timestamp', descending: true)
         .snapshots()
         .map((snapshot) {
-      return snapshot.docs.map((doc) => GoldSavingsTransaction.fromMap(doc.id, doc.data())).toList();
-    });
+          return snapshot.docs
+              .map((doc) => GoldSavingsTransaction.fromMap(doc.id, doc.data()))
+              .toList();
+        });
   }
 
-  Future<void> depositToGoldSavings(double amountInTHB, double currentBuyPricePerBaht) async {
+  Future<void> depositToGoldSavings(
+    double amountInTHB,
+    double currentBuyPricePerBaht,
+  ) async {
     final uid = currentUserId;
     if (uid == null) throw Exception('User not logged in');
 
     await Future.delayed(const Duration(seconds: 1)); // Network simulation
 
     // 1. Check wallet balance
-    final userDoc = await FirebaseFirestore.instance.collection('users').doc(uid).get();
-    final currentBalance = (userDoc.data()?['walletBalance'] ?? 0.0 as num).toDouble();
+    final userDoc = await FirebaseFirestore.instance
+        .collection('users')
+        .doc(uid)
+        .get();
+    final currentBalance = (userDoc.data()?['walletBalance'] ?? 0.0 as num)
+        .toDouble();
 
     if (currentBalance < amountInTHB) {
       throw Exception('Insufficient wallet balance. Please add funds first.');
@@ -1181,7 +1462,7 @@ class MockService {
     final formatter = NumberFormat('#,##0.00');
     final globalTxDoc = {
       'assetId': 'savings',
-      'type': TransactionType.buy.name, // Using 'buy' for simplicity in history
+      'type': TransactionType.savings_deposit.name, // Log specific Savings type
       'amount': amountInTHB,
       'weight': weightGained,
       'timestamp': FieldValue.serverTimestamp(),
@@ -1189,11 +1470,13 @@ class MockService {
       'userId': uid,
       'userEmail': FirebaseAuth.instance.currentUser?.email ?? 'Unknown Email',
     };
-    
+
     final userTxRef = userRef.collection('transactions').doc('t$txId');
     batch.set(userTxRef, globalTxDoc);
-    
-    final globalTransactionsRef = FirebaseFirestore.instance.collection('transactions').doc('t$txId');
+
+    final globalTransactionsRef = FirebaseFirestore.instance
+        .collection('transactions')
+        .doc('t$txId');
     batch.set(globalTransactionsRef, globalTxDoc);
 
     // 7. Add a notification
@@ -1202,7 +1485,8 @@ class MockService {
     final notif = NotificationItem(
       id: notifId,
       title: 'Gold Savings Deposit',
-      message: 'Successfully deposited ฿${formatter.format(amountInTHB)} toward your Gold Savings. Gained ${weightGained.toStringAsFixed(4)} Baht.',
+      message:
+          'Successfully deposited ฿${formatter.format(amountInTHB)} toward your Gold Savings. Gained ${weightGained.toStringAsFixed(4)} Baht.',
       type: 'savings',
       timestamp: DateTime.now(),
       isRead: false,
@@ -1212,15 +1496,24 @@ class MockService {
     await batch.commit();
   }
 
-  Future<void> sellFromGoldSavings(double weightToSell, double currentSellPricePerBaht) async {
+  Future<void> sellFromGoldSavings(
+    double weightToSell,
+    double currentSellPricePerBaht,
+  ) async {
     final uid = currentUserId;
     if (uid == null) throw Exception('User not logged in');
 
     await Future.delayed(const Duration(seconds: 1)); // Network simulation
 
     // 1. Check if user has enough saved gold weight
-    final savingsDoc = await FirebaseFirestore.instance.collection('users').doc(uid).collection('savings').doc('account').get();
-    final currentWeight = (savingsDoc.data()?['totalWeightSaved'] ?? 0.0 as num).toDouble();
+    final savingsDoc = await FirebaseFirestore.instance
+        .collection('users')
+        .doc(uid)
+        .collection('savings')
+        .doc('account')
+        .get();
+    final currentWeight = (savingsDoc.data()?['totalWeightSaved'] ?? 0.0 as num)
+        .toDouble();
 
     if (currentWeight < weightToSell) {
       throw Exception('Insufficient gold weight in your savings.');
@@ -1233,14 +1526,13 @@ class MockService {
 
     // 3. Add THB back to wallet
     final userRef = FirebaseFirestore.instance.collection('users').doc(uid);
-    batch.update(userRef, {
-      'walletBalance': FieldValue.increment(amountInTHB),
-    });
+    batch.update(userRef, {'walletBalance': FieldValue.increment(amountInTHB)});
 
     // 4. Update the aggregate savings account (deduct weight, and optionally adjust total invested)
     // We adjust total amount invested proportionally down
     double proportionSold = weightToSell / currentWeight;
-    double currentInvested = (savingsDoc.data()?['totalAmountInvested'] ?? 0.0 as num).toDouble();
+    double currentInvested =
+        (savingsDoc.data()?['totalAmountInvested'] ?? 0.0 as num).toDouble();
     double investedToDeduct = proportionSold * currentInvested;
 
     final savingsRef = userRef.collection('savings').doc('account');
@@ -1253,13 +1545,14 @@ class MockService {
     // 5. Create the transaction record
     final txId = DateTime.now().millisecondsSinceEpoch.toString();
     final txRef = savingsRef.collection('transactions').doc('stx_$txId');
-    
+
     // We can reuse the same model, but we make amountInvested negative to indicate cash returned
     final stx = GoldSavingsTransaction(
       id: txId,
-      amountInvested: -amountInTHB, 
+      amountInvested: -amountInTHB,
       weightGained: -weightToSell,
-      buyPriceAtTransaction: currentSellPricePerBaht, // Store the price they sold at
+      buyPriceAtTransaction:
+          currentSellPricePerBaht, // Store the price they sold at
       timestamp: DateTime.now(),
     );
     batch.set(txRef, stx.toMap());
@@ -1269,7 +1562,8 @@ class MockService {
     final formatter = NumberFormat('#,##0.00');
     final globalTxDoc = {
       'assetId': 'savings',
-      'type': TransactionType.sell.name, // Using 'sell' for history
+      'type':
+          TransactionType.savings_withdraw.name, // Log specific Savings type
       'amount': amountAbs,
       'weight': weightToSell,
       'timestamp': FieldValue.serverTimestamp(),
@@ -1280,8 +1574,10 @@ class MockService {
 
     final userTxRef = userRef.collection('transactions').doc('t$txId');
     batch.set(userTxRef, globalTxDoc);
-    
-    final globalTransactionsRef = FirebaseFirestore.instance.collection('transactions').doc('t$txId');
+
+    final globalTransactionsRef = FirebaseFirestore.instance
+        .collection('transactions')
+        .doc('t$txId');
     batch.set(globalTransactionsRef, globalTxDoc);
 
     // 7. Add a notification
@@ -1290,7 +1586,8 @@ class MockService {
     final notif = NotificationItem(
       id: notifId,
       title: 'Gold Savings Sold',
-      message: 'Successfully sold ${weightToSell.toStringAsFixed(4)} Baht of saved gold. You received ฿${formatter.format(amountInTHB)} back into your wallet.',
+      message:
+          'Successfully sold ${weightToSell.toStringAsFixed(4)} Baht of saved gold. You received ฿${formatter.format(amountInTHB)} back into your wallet.',
       type: 'savings',
       timestamp: DateTime.now(),
       isRead: false,

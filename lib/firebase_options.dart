@@ -16,12 +16,14 @@ import 'package:flutter/foundation.dart'
 /// ```
 class DefaultFirebaseOptions {
   static FirebaseOptions get currentPlatform {
+    const environment = String.fromEnvironment('ENV', defaultValue: 'prod');
+
     if (kIsWeb) {
-      return web;
+      return environment == 'dev' ? webDev : web;
     }
     switch (defaultTargetPlatform) {
       case TargetPlatform.android:
-        return android;
+        return environment == 'dev' ? androidDev : android;
       case TargetPlatform.iOS:
         throw UnsupportedError(
           'DefaultFirebaseOptions have not been configured for ios - '
@@ -65,5 +67,22 @@ class DefaultFirebaseOptions {
     messagingSenderId: '199216913951',
     projectId: 'store-backend-93d66',
     storageBucket: 'store-backend-93d66.firebasestorage.app',
+  );
+
+  static const FirebaseOptions webDev = FirebaseOptions(
+    apiKey: 'DEV_API_KEY_WEB',
+    appId: 'DEV_APP_ID_WEB',
+    messagingSenderId: 'DEV_SENDER_ID',
+    projectId: 'store-backend-dev',
+    authDomain: 'store-backend-dev.firebaseapp.com',
+    storageBucket: 'store-backend-dev.firebasestorage.app',
+  );
+
+  static const FirebaseOptions androidDev = FirebaseOptions(
+    apiKey: 'DEV_API_KEY_ANDROID',
+    appId: 'DEV_APP_ID_ANDROID',
+    messagingSenderId: 'DEV_SENDER_ID',
+    projectId: 'store-backend-dev',
+    storageBucket: 'store-backend-dev.firebasestorage.app',
   );
 }

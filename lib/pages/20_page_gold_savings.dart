@@ -32,7 +32,9 @@ class _GoldSavingsPageState extends State<GoldSavingsPage> {
         _amountController.clear();
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
-            content: Text('Successfully deposited ฿${NumberFormat('#,##0').format(amount)} to your savings!'),
+            content: Text(
+              'Successfully deposited ฿${NumberFormat('#,##0').format(amount)} to your savings!',
+            ),
             backgroundColor: Colors.green,
           ),
         );
@@ -68,7 +70,9 @@ class _GoldSavingsPageState extends State<GoldSavingsPage> {
         _amountController.clear();
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
-            content: Text('Successfully sold ${weightToSell.toStringAsFixed(4)} Baht of saved gold.'),
+            content: Text(
+              'Successfully sold ${weightToSell.toStringAsFixed(4)} Baht of saved gold.',
+            ),
             backgroundColor: Colors.green,
           ),
         );
@@ -140,17 +144,27 @@ class _GoldSavingsPageState extends State<GoldSavingsPage> {
                     const SizedBox(height: 24),
                     TextField(
                       controller: _amountController,
-                      keyboardType: const TextInputType.numberWithOptions(decimal: true),
+                      keyboardType: const TextInputType.numberWithOptions(
+                        decimal: true,
+                      ),
                       decoration: InputDecoration(
                         labelText: 'Amount (THB)',
-                        prefixIcon: const Icon(Icons.account_balance_wallet, color: Color(0xFF800000)),
+                        prefixIcon: const Icon(
+                          Icons.account_balance_wallet,
+                          color: Color(0xFF800000),
+                        ),
                         border: OutlineInputBorder(
                           borderRadius: BorderRadius.circular(12),
-                          borderSide: const BorderSide(color: Color(0xFF800000)),
+                          borderSide: const BorderSide(
+                            color: Color(0xFF800000),
+                          ),
                         ),
                         focusedBorder: OutlineInputBorder(
                           borderRadius: BorderRadius.circular(12),
-                          borderSide: const BorderSide(color: Color(0xFF800000), width: 2),
+                          borderSide: const BorderSide(
+                            color: Color(0xFF800000),
+                            width: 2,
+                          ),
                         ),
                       ),
                       onChanged: (val) => setSheetState(() {}),
@@ -166,18 +180,24 @@ class _GoldSavingsPageState extends State<GoldSavingsPage> {
                       ],
                     ),
                     const SizedBox(height: 24),
-                    
+
                     // Calculation preview
                     Builder(
                       builder: (context) {
-                        final val = double.tryParse(_amountController.text) ?? 0;
+                        final val =
+                            double.tryParse(
+                              _amountController.text.replaceAll(',', ''),
+                            ) ??
+                            0;
                         final weight = val / currentBuyPrice;
                         return Container(
                           padding: const EdgeInsets.all(16),
                           decoration: BoxDecoration(
                             color: const Color(0xFFFFF8E1),
                             borderRadius: BorderRadius.circular(12),
-                            border: Border.all(color: const Color(0xFFFFD700).withOpacity(0.5)),
+                            border: Border.all(
+                              color: const Color(0xFFFFD700).withOpacity(0.5),
+                            ),
                           ),
                           child: Row(
                             mainAxisAlignment: MainAxisAlignment.spaceBetween,
@@ -185,12 +205,15 @@ class _GoldSavingsPageState extends State<GoldSavingsPage> {
                               const Text('Est. Weight Gained:'),
                               Text(
                                 '${weight.toStringAsFixed(4)} Baht',
-                                style: const TextStyle(fontWeight: FontWeight.bold, color: Color(0xFF800000)),
+                                style: const TextStyle(
+                                  fontWeight: FontWeight.bold,
+                                  color: Color(0xFF800000),
+                                ),
                               ),
                             ],
                           ),
                         );
-                      }
+                      },
                     ),
                     const SizedBox(height: 24),
                     ElevatedButton(
@@ -202,22 +225,41 @@ class _GoldSavingsPageState extends State<GoldSavingsPage> {
                           borderRadius: BorderRadius.circular(12),
                         ),
                       ),
-                      onPressed: _isLoading ? null : () {
-                        final amount = double.tryParse(_amountController.text) ?? 0;
-                        if (amount > 0) {
-                          Navigator.pop(context); // close sheet
-                          _deposit(currentBuyPrice, amount);
-                        }
-                      },
-                      child: _isLoading 
-                          ? const SizedBox(width: 24, height: 24, child: CircularProgressIndicator(color: Colors.white, strokeWidth: 2))
-                          : const Text('Confirm Deposit', style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold)),
+                      onPressed: _isLoading
+                          ? null
+                          : () {
+                              final amount =
+                                  double.tryParse(
+                                    _amountController.text.replaceAll(',', ''),
+                                  ) ??
+                                  0;
+                              if (amount > 0) {
+                                Navigator.pop(context); // close sheet
+                                _deposit(currentBuyPrice, amount);
+                              }
+                            },
+                      child: _isLoading
+                          ? const SizedBox(
+                              width: 24,
+                              height: 24,
+                              child: CircularProgressIndicator(
+                                color: Colors.white,
+                                strokeWidth: 2,
+                              ),
+                            )
+                          : const Text(
+                              'Confirm Deposit',
+                              style: TextStyle(
+                                fontSize: 16,
+                                fontWeight: FontWeight.bold,
+                              ),
+                            ),
                     ),
                   ],
                 ),
               ),
             );
-          }
+          },
         );
       },
     );
@@ -229,9 +271,7 @@ class _GoldSavingsPageState extends State<GoldSavingsPage> {
         style: OutlinedButton.styleFrom(
           foregroundColor: const Color(0xFF800000),
           side: const BorderSide(color: Color(0xFF800000)),
-          shape: RoundedRectangleBorder(
-            borderRadius: BorderRadius.circular(8),
-          ),
+          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
         ),
         onPressed: () {
           setSheetState(() {
@@ -239,8 +279,12 @@ class _GoldSavingsPageState extends State<GoldSavingsPage> {
             // If 'amount' could be double.infinity for a 'MAX' button,
             // you would need to fetch the actual max balance here.
             // For now, we'll just apply the NumberFormat to the existing logic.
-            final currentVal = double.tryParse(_amountController.text.replaceAll(',', '')) ?? 0.0;
-            _amountController.text = NumberFormat('#,##0').format(currentVal + amount);
+            final currentVal =
+                double.tryParse(_amountController.text.replaceAll(',', '')) ??
+                0.0;
+            _amountController.text = NumberFormat(
+              '#,##0',
+            ).format(currentVal + amount);
           });
         },
         child: Text('+฿${NumberFormat('#,##0').format(amount)}'),
@@ -297,22 +341,35 @@ class _GoldSavingsPageState extends State<GoldSavingsPage> {
                     const SizedBox(height: 8),
                     Text(
                       'Available: ${currentSavedWeight.toStringAsFixed(4)} Baht',
-                      style: const TextStyle(fontSize: 14, fontWeight: FontWeight.bold),
+                      style: const TextStyle(
+                        fontSize: 14,
+                        fontWeight: FontWeight.bold,
+                      ),
                     ),
                     const SizedBox(height: 24),
                     TextField(
                       controller: _amountController,
-                      keyboardType: const TextInputType.numberWithOptions(decimal: true),
+                      keyboardType: const TextInputType.numberWithOptions(
+                        decimal: true,
+                      ),
                       decoration: InputDecoration(
                         labelText: 'Weight to sell (Baht)',
-                        prefixIcon: const Icon(Icons.fitness_center, color: Color(0xFF1E88E5)),
+                        prefixIcon: const Icon(
+                          Icons.fitness_center,
+                          color: Color(0xFF1E88E5),
+                        ),
                         border: OutlineInputBorder(
                           borderRadius: BorderRadius.circular(12),
-                          borderSide: const BorderSide(color: Color(0xFF1E88E5)),
+                          borderSide: const BorderSide(
+                            color: Color(0xFF1E88E5),
+                          ),
                         ),
                         focusedBorder: OutlineInputBorder(
                           borderRadius: BorderRadius.circular(12),
-                          borderSide: const BorderSide(color: Color(0xFF1E88E5), width: 2),
+                          borderSide: const BorderSide(
+                            color: Color(0xFF1E88E5),
+                            width: 2,
+                          ),
                         ),
                       ),
                       onChanged: (val) => setSheetState(() {}),
@@ -329,11 +386,14 @@ class _GoldSavingsPageState extends State<GoldSavingsPage> {
                             style: OutlinedButton.styleFrom(
                               foregroundColor: const Color(0xFF1E88E5),
                               side: const BorderSide(color: Color(0xFF1E88E5)),
-                              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+                              shape: RoundedRectangleBorder(
+                                borderRadius: BorderRadius.circular(8),
+                              ),
                             ),
                             onPressed: () {
                               setSheetState(() {
-                                _amountController.text = currentSavedWeight.toString();
+                                _amountController.text = currentSavedWeight
+                                    .toString();
                               });
                             },
                             child: const Text('MAX'),
@@ -342,33 +402,51 @@ class _GoldSavingsPageState extends State<GoldSavingsPage> {
                       ],
                     ),
                     const SizedBox(height: 24),
-                    
+
                     // Calculation preview
                     Builder(
                       builder: (context) {
-                        final val = double.tryParse(_amountController.text) ?? 0;
+                        final val =
+                            double.tryParse(
+                              _amountController.text.replaceAll(',', ''),
+                            ) ??
+                            0;
                         final cash = val * currentSellPrice;
                         final isOverLimit = val > currentSavedWeight;
 
                         return Container(
                           padding: const EdgeInsets.all(16),
                           decoration: BoxDecoration(
-                            color: isOverLimit ? Colors.red.shade50 : const Color(0xFFE3F2FD),
+                            color: isOverLimit
+                                ? Colors.red.shade50
+                                : const Color(0xFFE3F2FD),
                             borderRadius: BorderRadius.circular(12),
-                            border: Border.all(color: isOverLimit ? Colors.red : const Color(0xFF64B5F6).withOpacity(0.5)),
+                            border: Border.all(
+                              color: isOverLimit
+                                  ? Colors.red
+                                  : const Color(0xFF64B5F6).withOpacity(0.5),
+                            ),
                           ),
                           child: Row(
                             mainAxisAlignment: MainAxisAlignment.spaceBetween,
                             children: [
-                              Text(isOverLimit ? 'Exceeds balance' : 'Est. Cash Returned:'),
-                              if (!isOverLimit) Text(
-                                '+฿${NumberFormat('#,##0.00').format(cash)}',
-                                style: const TextStyle(fontWeight: FontWeight.bold, color: Color(0xFF1E88E5)),
+                              Text(
+                                isOverLimit
+                                    ? 'Exceeds balance'
+                                    : 'Est. Cash Returned:',
                               ),
+                              if (!isOverLimit)
+                                Text(
+                                  '+฿${NumberFormat('#,##0.00').format(cash)}',
+                                  style: const TextStyle(
+                                    fontWeight: FontWeight.bold,
+                                    color: Color(0xFF1E88E5),
+                                  ),
+                                ),
                             ],
                           ),
                         );
-                      }
+                      },
                     ),
                     const SizedBox(height: 24),
                     ElevatedButton(
@@ -380,24 +458,49 @@ class _GoldSavingsPageState extends State<GoldSavingsPage> {
                           borderRadius: BorderRadius.circular(12),
                         ),
                       ),
-                      onPressed: _isLoading ? null : () {
-                        final val = double.tryParse(_amountController.text) ?? 0;
-                        if (val > 0 && val <= currentSavedWeight) {
-                          Navigator.pop(context); // close sheet
-                          _withdraw(currentSellPrice, val);
-                        } else if (val > currentSavedWeight && mounted) {
-                          ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Cannot sell more than available weight.')));
-                        }
-                      },
-                      child: _isLoading 
-                          ? const SizedBox(width: 24, height: 24, child: CircularProgressIndicator(color: Colors.white, strokeWidth: 2))
-                          : const Text('Confirm Sell', style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold)),
+                      onPressed: _isLoading
+                          ? null
+                          : () {
+                              final val =
+                                  double.tryParse(
+                                    _amountController.text.replaceAll(',', ''),
+                                  ) ??
+                                  0;
+                              if (val > 0 && val <= currentSavedWeight) {
+                                Navigator.pop(context); // close sheet
+                                _withdraw(currentSellPrice, val);
+                              } else if (val > currentSavedWeight && mounted) {
+                                ScaffoldMessenger.of(context).showSnackBar(
+                                  const SnackBar(
+                                    content: Text(
+                                      'Cannot sell more than available weight.',
+                                    ),
+                                  ),
+                                );
+                              }
+                            },
+                      child: _isLoading
+                          ? const SizedBox(
+                              width: 24,
+                              height: 24,
+                              child: CircularProgressIndicator(
+                                color: Colors.white,
+                                strokeWidth: 2,
+                              ),
+                            )
+                          : const Text(
+                              'Confirm Sell',
+                              style: TextStyle(
+                                fontSize: 16,
+                                fontWeight: FontWeight.bold,
+                              ),
+                            ),
                     ),
                   ],
                 ),
               ),
             );
-          }
+          },
         );
       },
     );
@@ -436,7 +539,11 @@ class _GoldSavingsPageState extends State<GoldSavingsPage> {
                   padding: const EdgeInsets.only(right: 16.0),
                   child: Text(
                     '฿${NumberFormat('#,##0.00').format(balance)}',
-                    style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 16, color: Color(0xFF800000)),
+                    style: const TextStyle(
+                      fontWeight: FontWeight.bold,
+                      fontSize: 16,
+                      color: Color(0xFF800000),
+                    ),
                   ),
                 ),
               );
@@ -458,233 +565,347 @@ class _GoldSavingsPageState extends State<GoldSavingsPage> {
                 child: Column(
                   mainAxisAlignment: MainAxisAlignment.center,
                   children: [
-                   const Icon(Icons.lock_outline, size: 64, color: Colors.grey),
-                   const SizedBox(height: 16),
-                   const Text('Please login to access Gold Savings', style: TextStyle(fontSize: 18)),
-                   const SizedBox(height: 24),
-                   ElevatedButton(
-                     onPressed: () => Navigator.pushNamed(context, '/login'),
-                     style: ElevatedButton.styleFrom(
-                       backgroundColor: const Color(0xFF800000),
-                       foregroundColor: Colors.white,
-                     ),
-                     child: const Text('Login / Sign Up'),
-                   )
-                ],
+                    const Icon(
+                      Icons.lock_outline,
+                      size: 64,
+                      color: Colors.grey,
+                    ),
+                    const SizedBox(height: 16),
+                    const Text(
+                      'Please login to access Gold Savings',
+                      style: TextStyle(fontSize: 18),
+                    ),
+                    const SizedBox(height: 24),
+                    ElevatedButton(
+                      onPressed: () => Navigator.pushNamed(context, '/login'),
+                      style: ElevatedButton.styleFrom(
+                        backgroundColor: const Color(0xFF800000),
+                        foregroundColor: Colors.white,
+                      ),
+                      child: const Text('Login / Sign Up'),
+                    ),
+                  ],
+                ),
               ),
-            ),
-          );
-        }
+            );
+          }
 
           return CustomScrollView(
             slivers: [
-          SliverToBoxAdapter(
-            child: StreamBuilder<GoldRate>(
-              stream: _service.getGoldRateStream(),
-              builder: (context, rateSnapshot) {
-                return StreamBuilder<GoldSavingsAccount>(
-                  stream: _service.getGoldSavingsAccountStream(),
-                  builder: (context, accountSnapshot) {
-                    
-                    final currentBuyPrice = rateSnapshot.data?.buyPrice ?? 40000.0;
-                    final currentSellPrice = rateSnapshot.data?.sellPrice ?? 39900.0;
-                    final account = accountSnapshot.data ?? GoldSavingsAccount(totalWeightSaved: 0, totalAmountInvested: 0, lastUpdated: DateTime.now());
-                    
-                    return Column(
-                      crossAxisAlignment: CrossAxisAlignment.stretch,
-                      children: [
-                        _buildDashboardHeader(account, currentBuyPrice),
-                        
-                        Padding(
-                          padding: const EdgeInsets.symmetric(horizontal: 24.0, vertical: 16),
-                          child: Row(
-                            children: [
-                              Expanded(
-                                child: ElevatedButton.icon(
-                                  style: ElevatedButton.styleFrom(
-                                    backgroundColor: const Color(0xFF800000),
-                                    foregroundColor: Colors.white,
-                                    padding: const EdgeInsets.symmetric(vertical: 16),
-                                    elevation: 4,
-                                    shadowColor: const Color(0xFF800000).withOpacity(0.4),
-                                    shape: RoundedRectangleBorder(
-                                      borderRadius: BorderRadius.circular(16),
-                                    ),
-                                  ),
-                                  icon: const Icon(Icons.add_circle_outline),
-                                  label: const Text('Save Gold', style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold)),
-                                  onPressed: () => _showDepositSheet(currentBuyPrice),
-                                ),
-                              ),
-                              const SizedBox(width: 12),
-                              Expanded(
-                                child: ElevatedButton.icon(
-                                  style: ElevatedButton.styleFrom(
-                                    backgroundColor: Colors.white,
-                                    foregroundColor: const Color(0xFF1E88E5), // Blue for sell
-                                    padding: const EdgeInsets.symmetric(vertical: 16),
-                                    elevation: 4,
-                                    shadowColor: Colors.black.withOpacity(0.1),
-                                    shape: RoundedRectangleBorder(
-                                      borderRadius: BorderRadius.circular(16),
-                                      side: BorderSide(color: Colors.grey.shade300)
-                                    ),
-                                  ),
-                                  icon: const Icon(Icons.remove_circle_outline),
-                                  label: const Text('Sell Gold', style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold)),
-                                  onPressed: () => _showWithdrawSheet(currentSellPrice, account.totalWeightSaved),
-                                ),
-                              ),
-                            ],
-                          ),
-                        ),
+              SliverToBoxAdapter(
+                child: StreamBuilder<GoldRate>(
+                  stream: _service.getGoldRateStream(),
+                  builder: (context, rateSnapshot) {
+                    return StreamBuilder<GoldSavingsAccount>(
+                      stream: _service.getGoldSavingsAccountStream(),
+                      builder: (context, accountSnapshot) {
+                        final currentBuyPrice =
+                            rateSnapshot.data?.buyPrice ?? 40000.0;
+                        final currentSellPrice =
+                            rateSnapshot.data?.sellPrice ?? 39900.0;
+                        final account =
+                            accountSnapshot.data ??
+                            GoldSavingsAccount(
+                              totalWeightSaved: 0,
+                              totalAmountInvested: 0,
+                              lastUpdated: DateTime.now(),
+                            );
 
-                        // Stats Card
-                        Padding(
-                          padding: const EdgeInsets.symmetric(horizontal: 24.0),
-                          child: Row(
-                            children: [
-                              Expanded(
-                                child: _buildStatCard('Total Invested', '฿${NumberFormat('#,##0').format(account.totalAmountInvested)}'),
-                              ),
-                              const SizedBox(width: 16),
-                              Expanded(
-                                child: _buildStatCard('Current Value', '฿${NumberFormat('#,##0').format(account.totalWeightSaved * currentBuyPrice)}'),
-                              ),
-                            ],
-                          ),
-                        ),
-                        
-                        const Padding(
-                          padding: EdgeInsets.only(left: 24, top: 32, bottom: 12),
-                          child: Text(
-                            'TRANSACTION HISTORY',
-                            style: TextStyle(fontSize: 13, fontWeight: FontWeight.bold, color: Colors.grey, letterSpacing: 1.2),
-                          ),
-                        ),
-                      ],
-                    );
-                  }
-                );
-              }
-            ),
-          ),
-          
-          StreamBuilder<List<GoldSavingsTransaction>>(
-            stream: _service.getGoldSavingsTransactionsStream(),
-            builder: (context, snapshot) {
-              if (snapshot.connectionState == ConnectionState.waiting) {
-                return const SliverFillRemaining(child: Center(child: CircularProgressIndicator()));
-              }
-              
-              final txs = snapshot.data ?? [];
-              
-              if (txs.isEmpty) {
-                return SliverFillRemaining(
-                  hasScrollBody: false,
-                  child: Center(
-                    child: Column(
-                      mainAxisAlignment: MainAxisAlignment.center,
-                      children: [
-                        Icon(Icons.savings_outlined, size: 64, color: Colors.grey.withOpacity(0.5)),
-                        const SizedBox(height: 16),
-                        const Text('No savings history yet.', style: TextStyle(color: Colors.grey)),
-                      ],
-                    ),
-                  ),
-                );
-              }
-
-              return SliverPadding(
-                padding: const EdgeInsets.symmetric(horizontal: 24.0, vertical: 8),
-                sliver: SliverList(
-                  delegate: SliverChildBuilderDelegate(
-                    (context, index) {
-                      final tx = txs[index];
-                      final isDeposit = tx.amountInvested > 0;
-                      
-                      return Container(
-                        margin: const EdgeInsets.only(bottom: 12),
-                        padding: const EdgeInsets.all(16),
-                        decoration: BoxDecoration(
-                          color: Colors.white,
-                          borderRadius: BorderRadius.circular(16),
-                          boxShadow: [
-                            BoxShadow(color: Colors.black.withOpacity(0.03), blurRadius: 10, offset: const Offset(0, 4)),
-                          ],
-                        ),
-                        child: Row(
+                        return Column(
+                          crossAxisAlignment: CrossAxisAlignment.stretch,
                           children: [
-                            Container(
-                              padding: const EdgeInsets.all(12),
-                              decoration: BoxDecoration(
-                                color: isDeposit ? const Color(0xFFE8F5E9) : const Color(0xFFFFF3E0),
-                                borderRadius: BorderRadius.circular(12),
+                            _buildDashboardHeader(account, currentBuyPrice),
+
+                            Padding(
+                              padding: const EdgeInsets.symmetric(
+                                horizontal: 24.0,
+                                vertical: 16,
                               ),
-                              child: Icon(
-                                isDeposit ? Icons.arrow_downward : Icons.arrow_upward, 
-                                color: isDeposit ? const Color(0xFF388E3C) : const Color(0xFFF57C00)
-                              ),
-                            ),
-                            const SizedBox(width: 16),
-                            Expanded(
-                              child: Column(
-                                crossAxisAlignment: CrossAxisAlignment.start,
+                              child: Row(
                                 children: [
-                                  Text(isDeposit ? 'Bought Gold' : 'Sold Gold', style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 16)),
-                                  const SizedBox(height: 4),
-                                  Text(
-                                    DateFormat('dd MMM yyyy, HH:mm').format(tx.timestamp),
-                                    style: const TextStyle(color: Colors.grey, fontSize: 12),
+                                  Expanded(
+                                    child: ElevatedButton.icon(
+                                      style: ElevatedButton.styleFrom(
+                                        backgroundColor: const Color(
+                                          0xFF800000,
+                                        ),
+                                        foregroundColor: Colors.white,
+                                        padding: const EdgeInsets.symmetric(
+                                          vertical: 16,
+                                        ),
+                                        elevation: 4,
+                                        shadowColor: const Color(
+                                          0xFF800000,
+                                        ).withOpacity(0.4),
+                                        shape: RoundedRectangleBorder(
+                                          borderRadius: BorderRadius.circular(
+                                            16,
+                                          ),
+                                        ),
+                                      ),
+                                      icon: const Icon(
+                                        Icons.add_circle_outline,
+                                      ),
+                                      label: const Text(
+                                        'Save Gold',
+                                        style: TextStyle(
+                                          fontSize: 16,
+                                          fontWeight: FontWeight.bold,
+                                        ),
+                                      ),
+                                      onPressed: () =>
+                                          _showDepositSheet(currentBuyPrice),
+                                    ),
+                                  ),
+                                  const SizedBox(width: 12),
+                                  Expanded(
+                                    child: ElevatedButton.icon(
+                                      style: ElevatedButton.styleFrom(
+                                        backgroundColor: Colors.white,
+                                        foregroundColor: const Color(
+                                          0xFF1E88E5,
+                                        ), // Blue for sell
+                                        padding: const EdgeInsets.symmetric(
+                                          vertical: 16,
+                                        ),
+                                        elevation: 4,
+                                        shadowColor: Colors.black.withOpacity(
+                                          0.1,
+                                        ),
+                                        shape: RoundedRectangleBorder(
+                                          borderRadius: BorderRadius.circular(
+                                            16,
+                                          ),
+                                          side: BorderSide(
+                                            color: Colors.grey.shade300,
+                                          ),
+                                        ),
+                                      ),
+                                      icon: const Icon(
+                                        Icons.remove_circle_outline,
+                                      ),
+                                      label: const Text(
+                                        'Sell Gold',
+                                        style: TextStyle(
+                                          fontSize: 16,
+                                          fontWeight: FontWeight.bold,
+                                        ),
+                                      ),
+                                      onPressed: () => _showWithdrawSheet(
+                                        currentSellPrice,
+                                        account.totalWeightSaved,
+                                      ),
+                                    ),
                                   ),
                                 ],
                               ),
                             ),
-                            Column(
-                              crossAxisAlignment: CrossAxisAlignment.end,
-                              children: [
-                                Text(
-                                  '${isDeposit ? '+' : ''}${tx.weightGained.toStringAsFixed(4)} Baht', 
-                                  style: TextStyle(
-                                    fontWeight: FontWeight.bold, 
-                                    color: isDeposit ? const Color(0xFF388E3C) : Colors.black87, 
-                                    fontSize: 16
-                                  )
+
+                            // Stats Card
+                            Padding(
+                              padding: const EdgeInsets.symmetric(
+                                horizontal: 24.0,
+                              ),
+                              child: Row(
+                                children: [
+                                  Expanded(
+                                    child: _buildStatCard(
+                                      'Total Invested',
+                                      '฿${NumberFormat('#,##0').format(account.totalAmountInvested)}',
+                                    ),
+                                  ),
+                                  const SizedBox(width: 16),
+                                  Expanded(
+                                    child: _buildStatCard(
+                                      'Current Value',
+                                      '฿${NumberFormat('#,##0').format(account.totalWeightSaved * currentBuyPrice)}',
+                                    ),
+                                  ),
+                                ],
+                              ),
+                            ),
+
+                            const Padding(
+                              padding: EdgeInsets.only(
+                                left: 24,
+                                top: 32,
+                                bottom: 12,
+                              ),
+                              child: Text(
+                                'TRANSACTION HISTORY',
+                                style: TextStyle(
+                                  fontSize: 13,
+                                  fontWeight: FontWeight.bold,
+                                  color: Colors.grey,
+                                  letterSpacing: 1.2,
                                 ),
-                                const SizedBox(height: 4),
-                                Text(
-                                  '${isDeposit ? '-' : '+'}฿${NumberFormat('#,##0').format(tx.amountInvested.abs())}', 
-                                  style: TextStyle(
-                                    color: isDeposit ? Colors.grey : const Color(0xFF1E88E5), 
-                                    fontWeight: isDeposit ? FontWeight.normal : FontWeight.bold,
-                                    fontSize: 12
-                                  )
-                                ),
-                              ],
+                              ),
+                            ),
+                          ],
+                        );
+                      },
+                    );
+                  },
+                ),
+              ),
+
+              StreamBuilder<List<GoldSavingsTransaction>>(
+                stream: _service.getGoldSavingsTransactionsStream(),
+                builder: (context, snapshot) {
+                  if (snapshot.connectionState == ConnectionState.waiting) {
+                    return const SliverFillRemaining(
+                      child: Center(child: CircularProgressIndicator()),
+                    );
+                  }
+
+                  final txs = snapshot.data ?? [];
+
+                  if (txs.isEmpty) {
+                    return SliverFillRemaining(
+                      hasScrollBody: false,
+                      child: Center(
+                        child: Column(
+                          mainAxisAlignment: MainAxisAlignment.center,
+                          children: [
+                            Icon(
+                              Icons.savings_outlined,
+                              size: 64,
+                              color: Colors.grey.withOpacity(0.5),
+                            ),
+                            const SizedBox(height: 16),
+                            const Text(
+                              'No savings history yet.',
+                              style: TextStyle(color: Colors.grey),
                             ),
                           ],
                         ),
-                      );
-                    },
-                    childCount: txs.length,
-                  ),
-                ),
-              );
-            }
-          ),
-          const SliverPadding(padding: EdgeInsets.only(bottom: 40)),
-        ],
-      );
-        }
+                      ),
+                    );
+                  }
+
+                  return SliverPadding(
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 24.0,
+                      vertical: 8,
+                    ),
+                    sliver: SliverList(
+                      delegate: SliverChildBuilderDelegate((context, index) {
+                        final tx = txs[index];
+                        final isDeposit = tx.amountInvested > 0;
+
+                        return Container(
+                          margin: const EdgeInsets.only(bottom: 12),
+                          padding: const EdgeInsets.all(16),
+                          decoration: BoxDecoration(
+                            color: Colors.white,
+                            borderRadius: BorderRadius.circular(16),
+                            boxShadow: [
+                              BoxShadow(
+                                color: Colors.black.withOpacity(0.03),
+                                blurRadius: 10,
+                                offset: const Offset(0, 4),
+                              ),
+                            ],
+                          ),
+                          child: Row(
+                            children: [
+                              Container(
+                                padding: const EdgeInsets.all(12),
+                                decoration: BoxDecoration(
+                                  color: isDeposit
+                                      ? const Color(0xFFE8F5E9)
+                                      : const Color(0xFFFFF3E0),
+                                  borderRadius: BorderRadius.circular(12),
+                                ),
+                                child: Icon(
+                                  isDeposit
+                                      ? Icons.arrow_downward
+                                      : Icons.arrow_upward,
+                                  color: isDeposit
+                                      ? const Color(0xFF388E3C)
+                                      : const Color(0xFFF57C00),
+                                ),
+                              ),
+                              const SizedBox(width: 16),
+                              Expanded(
+                                child: Column(
+                                  crossAxisAlignment: CrossAxisAlignment.start,
+                                  children: [
+                                    Text(
+                                      isDeposit ? 'Bought Gold' : 'Sold Gold',
+                                      style: const TextStyle(
+                                        fontWeight: FontWeight.bold,
+                                        fontSize: 16,
+                                      ),
+                                    ),
+                                    const SizedBox(height: 4),
+                                    Text(
+                                      DateFormat(
+                                        'dd MMM yyyy, HH:mm',
+                                      ).format(tx.timestamp),
+                                      style: const TextStyle(
+                                        color: Colors.grey,
+                                        fontSize: 12,
+                                      ),
+                                    ),
+                                  ],
+                                ),
+                              ),
+                              Column(
+                                crossAxisAlignment: CrossAxisAlignment.end,
+                                children: [
+                                  Text(
+                                    '${isDeposit ? '+' : ''}${tx.weightGained.toStringAsFixed(4)} Baht',
+                                    style: TextStyle(
+                                      fontWeight: FontWeight.bold,
+                                      color: isDeposit
+                                          ? const Color(0xFF388E3C)
+                                          : Colors.black87,
+                                      fontSize: 16,
+                                    ),
+                                  ),
+                                  const SizedBox(height: 4),
+                                  Text(
+                                    '${isDeposit ? '-' : '+'}฿${NumberFormat('#,##0').format(tx.amountInvested.abs())}',
+                                    style: TextStyle(
+                                      color: isDeposit
+                                          ? Colors.grey
+                                          : const Color(0xFF1E88E5),
+                                      fontWeight: isDeposit
+                                          ? FontWeight.normal
+                                          : FontWeight.bold,
+                                      fontSize: 12,
+                                    ),
+                                  ),
+                                ],
+                              ),
+                            ],
+                          ),
+                        );
+                      }, childCount: txs.length),
+                    ),
+                  );
+                },
+              ),
+              const SliverPadding(padding: EdgeInsets.only(bottom: 40)),
+            ],
+          );
+        },
       ),
     );
   }
 
-  Widget _buildDashboardHeader(GoldSavingsAccount account, double currentBuyPrice) {
+  Widget _buildDashboardHeader(
+    GoldSavingsAccount account,
+    double currentBuyPrice,
+  ) {
     // Goal logic: Target is 1 Baht
     const double targetWeight = 1.0;
-    final double progress = (account.totalWeightSaved / targetWeight).clamp(0.0, 1.0);
-    
+    final double progress = (account.totalWeightSaved / targetWeight).clamp(
+      0.0,
+      1.0,
+    );
+
     return Container(
       margin: const EdgeInsets.all(24),
       padding: const EdgeInsets.all(32),
@@ -701,7 +922,14 @@ class _GoldSavingsPageState extends State<GoldSavingsPage> {
       ),
       child: Column(
         children: [
-          const Text('My Gold Savings', style: TextStyle(color: Colors.grey, fontWeight: FontWeight.bold, fontSize: 14)),
+          const Text(
+            'My Gold Savings',
+            style: TextStyle(
+              color: Colors.grey,
+              fontWeight: FontWeight.bold,
+              fontSize: 14,
+            ),
+          ),
           const SizedBox(height: 24),
           Stack(
             alignment: Alignment.center,
@@ -713,18 +941,32 @@ class _GoldSavingsPageState extends State<GoldSavingsPage> {
                   value: progress,
                   strokeWidth: 12,
                   backgroundColor: const Color(0xFFF0F0F0),
-                  valueColor: const AlwaysStoppedAnimation<Color>(Color(0xFFFFD700)), // Gold
+                  valueColor: const AlwaysStoppedAnimation<Color>(
+                    Color(0xFFFFD700),
+                  ), // Gold
                   strokeCap: StrokeCap.round,
                 ),
               ),
               Column(
                 mainAxisSize: MainAxisSize.min,
                 children: [
-                   Text(
+                  Text(
                     account.totalWeightSaved.toStringAsFixed(4),
-                    style: const TextStyle(fontSize: 36, fontWeight: FontWeight.w900, color: Color(0xFF800000), height: 1.0),
+                    style: const TextStyle(
+                      fontSize: 36,
+                      fontWeight: FontWeight.w900,
+                      color: Color(0xFF800000),
+                      height: 1.0,
+                    ),
                   ),
-                  const Text('Baht', style: TextStyle(fontSize: 16, color: Colors.grey, fontWeight: FontWeight.bold)),
+                  const Text(
+                    'Baht',
+                    style: TextStyle(
+                      fontSize: 16,
+                      color: Colors.grey,
+                      fontWeight: FontWeight.bold,
+                    ),
+                  ),
                 ],
               ),
             ],
@@ -732,7 +974,11 @@ class _GoldSavingsPageState extends State<GoldSavingsPage> {
           const SizedBox(height: 24),
           Text(
             '${(progress * 100).toStringAsFixed(1)}% of 1 Baht Goal',
-            style: const TextStyle(fontWeight: FontWeight.bold, color: Color(0xFF800000), fontSize: 16),
+            style: const TextStyle(
+              fontWeight: FontWeight.bold,
+              color: Color(0xFF800000),
+              fontSize: 16,
+            ),
           ),
         ],
       ),
@@ -747,15 +993,33 @@ class _GoldSavingsPageState extends State<GoldSavingsPage> {
         borderRadius: BorderRadius.circular(16),
         border: Border.all(color: const Color(0xFFF0F0F0)),
         boxShadow: [
-          BoxShadow(color: Colors.black.withOpacity(0.02), blurRadius: 5, offset: const Offset(0, 2)),
+          BoxShadow(
+            color: Colors.black.withOpacity(0.02),
+            blurRadius: 5,
+            offset: const Offset(0, 2),
+          ),
         ],
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Text(label, style: const TextStyle(color: Colors.grey, fontSize: 12, fontWeight: FontWeight.bold)),
+          Text(
+            label,
+            style: const TextStyle(
+              color: Colors.grey,
+              fontSize: 12,
+              fontWeight: FontWeight.bold,
+            ),
+          ),
           const SizedBox(height: 8),
-          Text(value, style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 16, color: Color(0xFF800000))),
+          Text(
+            value,
+            style: const TextStyle(
+              fontWeight: FontWeight.bold,
+              fontSize: 16,
+              color: Color(0xFF800000),
+            ),
+          ),
         ],
       ),
     );

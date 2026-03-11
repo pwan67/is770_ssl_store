@@ -19,7 +19,9 @@ class TransactionHistoryPage extends StatelessWidget {
         stream: MockService().getTransactionHistoryStream(),
         builder: (context, snapshot) {
           if (snapshot.connectionState == ConnectionState.waiting) {
-            return const Center(child: CircularProgressIndicator(color: Color(0xFF800000)));
+            return const Center(
+              child: CircularProgressIndicator(color: Color(0xFF800000)),
+            );
           }
           if (snapshot.hasError) {
             return Center(child: Text('Error: \${snapshot.error}'));
@@ -80,6 +82,18 @@ class TransactionHistoryPage extends StatelessWidget {
         amountPrefix = '-';
         amountColor = Colors.red.shade700; // Cash paid to redeem
         break;
+      case TransactionType.savings_deposit:
+        iconColor = Colors.teal.shade600;
+        iconData = Icons.savings;
+        amountPrefix = '-';
+        amountColor = Colors.red.shade700; // Deducted from wallet
+        break;
+      case TransactionType.savings_withdraw:
+        iconColor = Colors.teal.shade600;
+        iconData = Icons.savings;
+        amountPrefix = '+';
+        amountColor = Colors.green.shade700; // Added to wallet
+        break;
     }
 
     final dateFormat = DateFormat('MMM dd, yyyy • hh:mm a');
@@ -91,7 +105,11 @@ class TransactionHistoryPage extends StatelessWidget {
         color: Colors.white,
         borderRadius: BorderRadius.circular(16),
         boxShadow: [
-          BoxShadow(color: Colors.black.withValues(alpha: 0.03), blurRadius: 10, offset: const Offset(0, 4)),
+          BoxShadow(
+            color: Colors.black.withValues(alpha: 0.03),
+            blurRadius: 10,
+            offset: const Offset(0, 4),
+          ),
         ],
       ),
       child: Row(
@@ -111,12 +129,21 @@ class TransactionHistoryPage extends StatelessWidget {
               children: [
                 Text(
                   tx.type.name.toUpperCase(),
-                  style: TextStyle(fontSize: 12, fontWeight: FontWeight.bold, color: iconColor, letterSpacing: 1.2),
+                  style: TextStyle(
+                    fontSize: 12,
+                    fontWeight: FontWeight.bold,
+                    color: iconColor,
+                    letterSpacing: 1.2,
+                  ),
                 ),
                 const SizedBox(height: 4),
                 Text(
                   tx.details,
-                  style: const TextStyle(fontSize: 15, fontWeight: FontWeight.bold, color: Colors.black87),
+                  style: const TextStyle(
+                    fontSize: 15,
+                    fontWeight: FontWeight.bold,
+                    color: Colors.black87,
+                  ),
                   maxLines: 2,
                   overflow: TextOverflow.ellipsis,
                 ),
@@ -135,10 +162,14 @@ class TransactionHistoryPage extends StatelessWidget {
             children: [
               Text(
                 '$amountPrefix${currencyFormat.format(tx.amount)}',
-                style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold, color: amountColor),
+                style: TextStyle(
+                  fontSize: 16,
+                  fontWeight: FontWeight.bold,
+                  color: amountColor,
+                ),
               ),
             ],
-          )
+          ),
         ],
       ),
     );

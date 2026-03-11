@@ -1,4 +1,5 @@
 import 'package:firebase_auth/firebase_auth.dart';
+import 'package:cloud_firestore/cloud_firestore.dart';
 
 class AuthService {
   final FirebaseAuth _auth = FirebaseAuth.instance;
@@ -30,6 +31,16 @@ class AuthService {
         email: email,
         password: password,
       );
+      
+      // Create user document with role
+      if (credential.user != null) {
+        await FirebaseFirestore.instance.collection('users').doc(credential.user!.uid).set({
+          'email': email,
+          'role': 'user',
+          'createdAt': FieldValue.serverTimestamp(),
+        });
+      }
+      
       return credential;
     } on FirebaseAuthException catch (e) {
       print('Register error: ${e.message}');

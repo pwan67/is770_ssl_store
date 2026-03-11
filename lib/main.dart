@@ -3,7 +3,8 @@ import 'package:firebase_core/firebase_core.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'firebase_options.dart';
 
-// -- Pages --
+// -- Pages / Widgets --
+import 'widgets/auth_gate.dart';
 import 'pages/main_screen.dart';
 import 'pages/00_page_home.dart';
 import 'pages/01_page_login.dart';
@@ -18,8 +19,8 @@ void main() async {
     options: DefaultFirebaseOptions.currentPlatform,
   );
   
-  // Enforce required logout on app open:
-  await FirebaseAuth.instance.signOut();
+  // User will now stay logged in between sessions
+  // await FirebaseAuth.instance.signOut();
 
   runApp(const MyApp());
 }
@@ -51,7 +52,7 @@ class MyApp extends StatelessWidget {
 
       initialRoute: '/',
       routes: {
-        '/': (_) => const MainScreen(),
+        '/': (_) => const AuthGate(),
         '/login': (_) => const LoginPage(),
         //        '/buy-sell': (_) => const BuySellPage(),
         '/appointment': (_) => const AppointmentPage(),
