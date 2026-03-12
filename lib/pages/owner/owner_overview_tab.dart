@@ -101,70 +101,73 @@ class _OwnerOverviewTabState extends State<OwnerOverviewTab> {
           ),
         ),
         const SizedBox(height: 12),
-        Row(
-          children: [
-            Expanded(
-              child: _MetricCard(
-                title: 'Total Profit',
-                icon: Icons.trending_up,
-                color: const Color(0xFF2E7D32),
-                isHero: true,
-                stream: FirebaseFirestore.instance
-                    .collection('transactions')
-                    .where('type', isEqualTo: 'buy')
-                    .snapshots()
-                    .map((snap) {
-                  double total = 0.0;
-                  for (var doc in snap.docs) {
-                    final data = doc.data();
-                    final timestamp = (data['timestamp'] as Timestamp?)?.toDate();
-                    if (_selectedDateRange != null && timestamp != null) {
-                      if (timestamp.isBefore(_selectedDateRange!.start) ||
-                          timestamp.isAfter(_selectedDateRange!.end)) {
-                        continue;
+        SizedBox(
+          height: 110,
+          child: Row(
+            children: [
+              Expanded(
+                child: _MetricCard(
+                  title: 'Total Profit',
+                  icon: Icons.trending_up,
+                  color: const Color(0xFF2E7D32),
+                  isHero: true,
+                  stream: FirebaseFirestore.instance
+                      .collection('transactions')
+                      .where('type', isEqualTo: 'buy')
+                      .snapshots()
+                      .map((snap) {
+                    double total = 0.0;
+                    for (var doc in snap.docs) {
+                      final data = doc.data();
+                      final timestamp = (data['timestamp'] as Timestamp?)?.toDate();
+                      if (_selectedDateRange != null && timestamp != null) {
+                        if (timestamp.isBefore(_selectedDateRange!.start) ||
+                            timestamp.isAfter(_selectedDateRange!.end)) {
+                          continue;
+                        }
                       }
+                      total += (data['profit'] as num?)?.toDouble() ?? 0.0;
                     }
-                    total += (data['profit'] as num?)?.toDouble() ?? 0.0;
-                  }
-                  return _formatCurrency(total);
-                }),
-              ),
-            ),
-            const SizedBox(width: 16),
-            Expanded(
-              child: _MetricCard(
-                title: 'Total Revenue',
-                icon: Icons.monetization_on,
-                color: const Color(0xFF1A237E),
-                isHero: true,
-                onTap: () => Navigator.push(
-                  context,
-                  MaterialPageRoute(
-                    builder: (_) => OwnerSalesThbPage(dateRange: _selectedDateRange),
-                  ),
+                    return _formatCurrency(total);
+                  }),
                 ),
-                stream: FirebaseFirestore.instance
-                    .collection('transactions')
-                    .where('type', isEqualTo: 'buy')
-                    .snapshots()
-                    .map((snap) {
-                  double total = 0.0;
-                  for (var doc in snap.docs) {
-                    final data = doc.data();
-                    final timestamp = (data['timestamp'] as Timestamp?)?.toDate();
-                    if (_selectedDateRange != null && timestamp != null) {
-                      if (timestamp.isBefore(_selectedDateRange!.start) ||
-                          timestamp.isAfter(_selectedDateRange!.end)) {
-                        continue;
-                      }
-                    }
-                    total += (data['amount'] as num?)?.toDouble() ?? 0.0;
-                  }
-                  return _formatCurrency(total);
-                }),
               ),
-            ),
-          ],
+              const SizedBox(width: 16),
+              Expanded(
+                child: _MetricCard(
+                  title: 'Total Revenue',
+                  icon: Icons.monetization_on,
+                  color: const Color(0xFF1A237E),
+                  isHero: true,
+                  onTap: () => Navigator.push(
+                    context,
+                    MaterialPageRoute(
+                      builder: (_) => OwnerSalesThbPage(dateRange: _selectedDateRange),
+                    ),
+                  ),
+                  stream: FirebaseFirestore.instance
+                      .collection('transactions')
+                      .where('type', isEqualTo: 'buy')
+                      .snapshots()
+                      .map((snap) {
+                    double total = 0.0;
+                    for (var doc in snap.docs) {
+                      final data = doc.data();
+                      final timestamp = (data['timestamp'] as Timestamp?)?.toDate();
+                      if (_selectedDateRange != null && timestamp != null) {
+                        if (timestamp.isBefore(_selectedDateRange!.start) ||
+                            timestamp.isAfter(_selectedDateRange!.end)) {
+                          continue;
+                        }
+                      }
+                      total += (data['amount'] as num?)?.toDouble() ?? 0.0;
+                    }
+                    return _formatCurrency(total);
+                  }),
+                ),
+              ),
+            ],
+          ),
         ),
         const SizedBox(height: 16),
         GridView.count(
@@ -524,6 +527,7 @@ class _MetricCard extends StatelessWidget {
             padding: EdgeInsets.all(isHero ? 16.0 : 12.0),
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
+              mainAxisAlignment: MainAxisAlignment.spaceBetween,
               children: [
                 Row(
                   mainAxisAlignment: MainAxisAlignment.spaceBetween,
@@ -548,23 +552,19 @@ class _MetricCard extends StatelessWidget {
                       ),
                   ],
                 ),
-                const Spacer(),
                 Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
                     StreamBuilder<String>(
                       stream: stream,
                       builder: (context, snapshot) {
-                        return FittedBox(
-                          fit: BoxFit.scaleDown,
-                          child: Text(
-                            snapshot.data ?? '--',
-                            style: TextStyle(
-                              fontSize: isHero ? 22 : 18,
-                              fontWeight: FontWeight.bold,
-                              color: isHero ? Colors.white : Colors.black87,
-                              letterSpacing: -0.5,
-                            ),
+                        return Text(
+                          snapshot.data ?? '--',
+                          style: TextStyle(
+                            fontSize: isHero ? 22 : 18,
+                            fontWeight: FontWeight.bold,
+                            color: isHero ? Colors.white : Colors.black87,
+                            letterSpacing: -0.5,
                           ),
                         );
                       },
