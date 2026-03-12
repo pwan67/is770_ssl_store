@@ -91,65 +91,98 @@ class _OwnerOverviewTabState extends State<OwnerOverviewTab> {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
+        // --- HERO SECTION (Critical KPIs) ---
         const Text(
-          'Sales Performance',
-          style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold),
+          'Business Performance',
+          style: TextStyle(
+            fontSize: 20,
+            fontWeight: FontWeight.bold,
+            letterSpacing: 0.5,
+          ),
         ),
         const SizedBox(height: 12),
+        Row(
+          children: [
+            Expanded(
+              child: _MetricCard(
+                title: 'Total Profit',
+                icon: Icons.trending_up,
+                color: const Color(0xFF2E7D32),
+                isHero: true,
+                stream: FirebaseFirestore.instance
+                    .collection('transactions')
+                    .where('type', isEqualTo: 'buy')
+                    .snapshots()
+                    .map((snap) {
+                  double total = 0.0;
+                  for (var doc in snap.docs) {
+                    final data = doc.data();
+                    final timestamp = (data['timestamp'] as Timestamp?)?.toDate();
+                    if (_selectedDateRange != null && timestamp != null) {
+                      if (timestamp.isBefore(_selectedDateRange!.start) ||
+                          timestamp.isAfter(_selectedDateRange!.end)) {
+                        continue;
+                      }
+                    }
+                    total += (data['profit'] as num?)?.toDouble() ?? 0.0;
+                  }
+                  return _formatCurrency(total);
+                }),
+              ),
+            ),
+            const SizedBox(width: 16),
+            Expanded(
+              child: _MetricCard(
+                title: 'Total Revenue',
+                icon: Icons.monetization_on,
+                color: const Color(0xFF1A237E),
+                isHero: true,
+                onTap: () => Navigator.push(
+                  context,
+                  MaterialPageRoute(
+                    builder: (_) => OwnerSalesThbPage(dateRange: _selectedDateRange),
+                  ),
+                ),
+                stream: FirebaseFirestore.instance
+                    .collection('transactions')
+                    .where('type', isEqualTo: 'buy')
+                    .snapshots()
+                    .map((snap) {
+                  double total = 0.0;
+                  for (var doc in snap.docs) {
+                    final data = doc.data();
+                    final timestamp = (data['timestamp'] as Timestamp?)?.toDate();
+                    if (_selectedDateRange != null && timestamp != null) {
+                      if (timestamp.isBefore(_selectedDateRange!.start) ||
+                          timestamp.isAfter(_selectedDateRange!.end)) {
+                        continue;
+                      }
+                    }
+                    total += (data['amount'] as num?)?.toDouble() ?? 0.0;
+                  }
+                  return _formatCurrency(total);
+                }),
+              ),
+            ),
+          ],
+        ),
+        const SizedBox(height: 16),
         GridView.count(
           crossAxisCount: 2,
           shrinkWrap: true,
           physics: const NeverScrollableScrollPhysics(),
           crossAxisSpacing: 16,
           mainAxisSpacing: 16,
-          childAspectRatio: 1.5,
+          childAspectRatio: 1.8,
           children: [
             _MetricCard(
-              title: 'Total Sales (THB)',
-              icon: Icons.monetization_on,
-              color: Colors.blueAccent,
-              onTap: () => Navigator.push(
-                context,
-                MaterialPageRoute(
-                  builder: (_) =>
-                      OwnerSalesThbPage(dateRange: _selectedDateRange),
-                ),
-              ),
-              stream: FirebaseFirestore.instance
-                  .collection('transactions')
-                  .where('type', isEqualTo: 'buy')
-                  .snapshots()
-                  .map((snap) {
-                    double total = 0.0;
-                    for (var doc in snap.docs) {
-                      final data = doc.data();
-                      final timestamp = (data['timestamp'] as Timestamp?)
-                          ?.toDate();
-                      if (_selectedDateRange != null && timestamp != null) {
-                        if (timestamp.isBefore(_selectedDateRange!.start) ||
-                            timestamp.isAfter(_selectedDateRange!.end)) {
-                          continue;
-                        }
-                      }
-                      total += (data['amount'] as num?)?.toDouble() ?? 0.0;
-                    }
-                    if (total >= 1000000) {
-                      return '฿${(total / 1000000).toStringAsFixed(1)}M';
-                    } else if (total >= 1000) {
-                      return '฿${(total / 1000).toStringAsFixed(1)}k';
-                    }
-                    return '฿${total.toStringAsFixed(0)}';
-                  }),
-            ),
-            _MetricCard(
-              title: 'Total Sales (Qty)',
+              title: 'Sales Count',
               icon: Icons.shopping_bag,
-              color: Colors.blue,
+              color: const Color(0xFF1976D2),
               onTap: () => Navigator.push(
                 context,
                 MaterialPageRoute(
-                  builder: (_) =>
-                      OwnerSalesQtyPage(dateRange: _selectedDateRange),
+                  builder: (_) => OwnerSalesQtyPage(dateRange: _selectedDateRange),
                 ),
               ),
               stream: FirebaseFirestore.instance
@@ -157,95 +190,52 @@ class _OwnerOverviewTabState extends State<OwnerOverviewTab> {
                   .where('type', isEqualTo: 'buy')
                   .snapshots()
                   .map((snap) {
-                    int count = 0;
-                    for (var doc in snap.docs) {
-                      final data = doc.data();
-                      final timestamp = (data['timestamp'] as Timestamp?)
-                          ?.toDate();
-                      if (_selectedDateRange != null && timestamp != null) {
-                        if (timestamp.isBefore(_selectedDateRange!.start) ||
-                            timestamp.isAfter(_selectedDateRange!.end)) {
-                          continue;
-                        }
-                      }
-                      count++;
+                int count = 0;
+                for (var doc in snap.docs) {
+                  final data = doc.data();
+                  final timestamp = (data['timestamp'] as Timestamp?)?.toDate();
+                  if (_selectedDateRange != null && timestamp != null) {
+                    if (timestamp.isBefore(_selectedDateRange!.start) ||
+                        timestamp.isAfter(_selectedDateRange!.end)) {
+                      continue;
                     }
-                    return count.toString();
-                  }),
+                  }
+                  count++;
+                }
+                return count.toString();
+              }),
             ),
             _MetricCard(
-              title: 'Total Cost (THB)',
+              title: 'Total Cost (COGS)',
               icon: Icons.payments,
-              color: Colors.redAccent,
+              color: const Color(0xFFC62828),
               stream: FirebaseFirestore.instance
                   .collection('transactions')
                   .where('type', isEqualTo: 'buy')
                   .snapshots()
                   .map((snap) {
-                    double total = 0.0;
-                    for (var doc in snap.docs) {
-                      final data = doc.data();
-                      final timestamp = (data['timestamp'] as Timestamp?)
-                          ?.toDate();
-                      if (_selectedDateRange != null && timestamp != null) {
-                        if (timestamp.isBefore(_selectedDateRange!.start) ||
-                            timestamp.isAfter(_selectedDateRange!.end)) {
-                          continue;
-                        }
-                      }
-                      total += (data['cost'] as num?)?.toDouble() ?? 0.0;
+                double total = 0.0;
+                for (var doc in snap.docs) {
+                  final data = doc.data();
+                  final timestamp = (data['timestamp'] as Timestamp?)?.toDate();
+                  if (_selectedDateRange != null && timestamp != null) {
+                    if (timestamp.isBefore(_selectedDateRange!.start) ||
+                        timestamp.isAfter(_selectedDateRange!.end)) {
+                      continue;
                     }
-                    if (total >= 1000000) {
-                      return '฿${(total / 1000000).toStringAsFixed(1)}M';
-                    } else if (total >= 1000) {
-                      return '฿${(total / 1000).toStringAsFixed(1)}k';
-                    }
-                    return '฿${total.toStringAsFixed(0)}';
-                  }),
-            ),
-            _MetricCard(
-              title: 'Total Profit (THB)',
-              icon: Icons.trending_up,
-              color: Colors.green,
-              stream: FirebaseFirestore.instance
-                  .collection('transactions')
-                  .where('type', isEqualTo: 'buy')
-                  .snapshots()
-                  .map((snap) {
-                    double total = 0.0;
-                    for (var doc in snap.docs) {
-                      final data = doc.data();
-                      final timestamp = (data['timestamp'] as Timestamp?)
-                          ?.toDate();
-                      if (_selectedDateRange != null && timestamp != null) {
-                        if (timestamp.isBefore(_selectedDateRange!.start) ||
-                            timestamp.isAfter(_selectedDateRange!.end)) {
-                          continue;
-                        }
-                      }
-                      total += (data['profit'] as num?)?.toDouble() ?? 0.0;
-                    }
-                    bool isNegative = total < 0;
-                    double absTotal = total.abs();
-                    String prefix = isNegative ? '-฿' : '฿';
-                    
-                    String formatted;
-                    if (absTotal >= 1000000) {
-                      formatted = '${(absTotal / 1000000).toStringAsFixed(1)}M';
-                    } else if (absTotal >= 1000) {
-                      formatted = '${(absTotal / 1000).toStringAsFixed(1)}k';
-                    } else {
-                      formatted = absTotal.toStringAsFixed(0);
-                    }
-                    return '$prefix$formatted';
-                  }),
+                  }
+                  total += (data['cost'] as num?)?.toDouble() ?? 0.0;
+                }
+                return _formatCurrency(total);
+              }),
             ),
           ],
         ),
 
-        const SizedBox(height: 24),
+        // --- STORE EQUITY ---
+        const SizedBox(height: 32),
         const Text(
-          'Store Assets',
+          'Store Equity & Assets',
           style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold),
         ),
         const SizedBox(height: 12),
@@ -255,12 +245,12 @@ class _OwnerOverviewTabState extends State<OwnerOverviewTab> {
           physics: const NeverScrollableScrollPhysics(),
           crossAxisSpacing: 16,
           mainAxisSpacing: 16,
-          childAspectRatio: 1.5,
+          childAspectRatio: 1.6,
           children: [
             _MetricCard(
               title: 'Wallet Balances',
               icon: Icons.account_balance_wallet,
-              color: Colors.purple,
+              color: const Color(0xFF6A1B9A),
               onTap: () => Navigator.push(
                 context,
                 MaterialPageRoute(builder: (_) => const OwnerWalletsPage()),
@@ -269,61 +259,17 @@ class _OwnerOverviewTabState extends State<OwnerOverviewTab> {
                   .collection('wallets')
                   .snapshots()
                   .map((snap) {
-                    double total = 0.0;
-                    for (var doc in snap.docs) {
-                      total +=
-                          (doc.data()['balance'] as num?)?.toDouble() ?? 0.0;
-                    }
-                    if (total >= 1000000) {
-                      return '฿${(total / 1000000).toStringAsFixed(1)}M';
-                    } else if (total >= 1000) {
-                      return '฿${(total / 1000).toStringAsFixed(1)}k';
-                    }
-                    return '฿${total.toStringAsFixed(0)}';
-                  }),
-            ),
-            _MetricCard(
-              title: 'Total Products',
-              icon: Icons.inventory_2,
-              color: Colors.green,
-              onTap: () => Navigator.push(
-                context,
-                MaterialPageRoute(builder: (_) => const OwnerProductsPage()),
-              ),
-              stream: FirebaseFirestore.instance
-                  .collection('products')
-                  .snapshots()
-                  .map((snap) => snap.docs.length.toString()),
-            ),
-            _MetricCard(
-              title: 'Inventory Investment',
-              icon: Icons.inventory,
-              color: Colors.brown,
-              onTap: () => Navigator.push(
-                context,
-                MaterialPageRoute(builder: (_) => const OwnerInventoryCostPage()),
-              ),
-              stream: FirebaseFirestore.instance
-                  .collection('transactions')
-                  .where('type', isEqualTo: 'restock')
-                  .snapshots()
-                  .map((snap) {
-                    double total = 0.0;
-                    for (var doc in snap.docs) {
-                      total += (doc.data()['amount'] as num?)?.toDouble() ?? 0.0;
-                    }
-                    if (total >= 1000000) {
-                      return '฿${(total / 1000000).toStringAsFixed(1)}M';
-                    } else if (total >= 1000) {
-                      return '฿${(total / 1000).toStringAsFixed(1)}k';
-                    }
-                    return '฿${total.toStringAsFixed(0)}';
-                  }),
+                double total = 0.0;
+                for (var doc in snap.docs) {
+                  total += (doc.data()['balance'] as num?)?.toDouble() ?? 0.0;
+                }
+                return _formatCurrency(total);
+              }),
             ),
             _MetricCard(
               title: 'Inventory Value',
-              icon: Icons.account_balance_wallet,
-              color: Colors.orange,
+              icon: Icons.auto_graph,
+              color: const Color(0xFFEF6C00),
               onTap: () => Navigator.push(
                 context,
                 MaterialPageRoute(builder: (_) => const OwnerInventoryCostPage()),
@@ -333,32 +279,59 @@ class _OwnerOverviewTabState extends State<OwnerOverviewTab> {
                   .doc('gold_rate')
                   .snapshots()
                   .asyncMap((rateDoc) async {
-                    final data = rateDoc.data();
-                    final marketRate = (data?['sellPrice'] as num?)?.toDouble() ?? 42000.0;
-                    
-                    final productSnap = await FirebaseFirestore.instance.collection('products').get();
-                    double totalValue = 0.0;
-                    for (var doc in productSnap.docs) {
-                      final pData = doc.data();
-                      final stock = (pData['stock'] as num?)?.toInt() ?? 0;
-                      final weight = (pData['weight'] as num?)?.toDouble() ?? 0.0;
-                      totalValue += stock * weight * marketRate * 0.7;
-                    }
-                    
-                    if (totalValue >= 1000000) {
-                      return '฿${(totalValue / 1000000).toStringAsFixed(1)}M';
-                    } else if (totalValue >= 1000) {
-                      return '฿${(totalValue / 1000).toStringAsFixed(1)}k'; 
-                    }
-                    return '฿${totalValue.toStringAsFixed(0)}';
-                  }),
+                final data = rateDoc.data();
+                final marketRate = (data?['sellPrice'] as num?)?.toDouble() ?? 42000.0;
+                final productSnap = await FirebaseFirestore.instance.collection('products').get();
+                double totalValue = 0.0;
+                for (var doc in productSnap.docs) {
+                  final pData = doc.data();
+                  final stock = (pData['stock'] as num?)?.toInt() ?? 0;
+                  final weight = (pData['weight'] as num?)?.toDouble() ?? 0.0;
+                  totalValue += stock * weight * marketRate * 0.7;
+                }
+                return _formatCurrency(totalValue);
+              }),
+            ),
+            _MetricCard(
+              title: 'Stock Investment',
+              icon: Icons.inventory,
+              color: const Color(0xFF4E342E),
+              onTap: () => Navigator.push(
+                context,
+                MaterialPageRoute(builder: (_) => const OwnerInventoryCostPage()),
+              ),
+              stream: FirebaseFirestore.instance
+                  .collection('transactions')
+                  .where('type', isEqualTo: 'restock')
+                  .snapshots()
+                  .map((snap) {
+                double total = 0.0;
+                for (var doc in snap.docs) {
+                  total += (doc.data()['amount'] as num?)?.toDouble() ?? 0.0;
+                }
+                return _formatCurrency(total);
+              }),
+            ),
+            _MetricCard(
+              title: 'Product Types',
+              icon: Icons.inventory_2,
+              color: const Color(0xFF2E7D32),
+              onTap: () => Navigator.push(
+                context,
+                MaterialPageRoute(builder: (_) => const OwnerProductsPage()),
+              ),
+              stream: FirebaseFirestore.instance
+                  .collection('products')
+                  .snapshots()
+                  .map((snap) => snap.docs.length.toString()),
             ),
           ],
         ),
 
-        const SizedBox(height: 24),
+        // --- LIABILITIES ---
+        const SizedBox(height: 32),
         const Text(
-          'Store Debts / Liabilities',
+          'Store Liabilities',
           style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold),
         ),
         const SizedBox(height: 12),
@@ -368,12 +341,12 @@ class _OwnerOverviewTabState extends State<OwnerOverviewTab> {
           physics: const NeverScrollableScrollPhysics(),
           crossAxisSpacing: 16,
           mainAxisSpacing: 16,
-          childAspectRatio: 1.5,
+          childAspectRatio: 1.8,
           children: [
             _MetricCard(
               title: 'Active Pawns',
               icon: Icons.real_estate_agent,
-              color: Colors.orange,
+              color: const Color(0xFFE65100),
               onTap: () => Navigator.push(
                 context,
                 MaterialPageRoute(builder: (_) => const OwnerPawnsPage()),
@@ -385,9 +358,9 @@ class _OwnerOverviewTabState extends State<OwnerOverviewTab> {
                   .map((snap) => snap.docs.length.toString()),
             ),
             _MetricCard(
-              title: 'Gold Savings (Payable)',
+              title: 'Savings Liability',
               icon: Icons.savings,
-              color: Colors.teal,
+              color: const Color(0xFF00695C),
               onTap: () => Navigator.push(
                 context,
                 MaterialPageRoute(builder: (_) => const OwnerSavingsPage()),
@@ -396,36 +369,34 @@ class _OwnerOverviewTabState extends State<OwnerOverviewTab> {
                   .collectionGroup('savings')
                   .snapshots()
                   .asyncMap((snap) async {
-                    double totalWeight = 0.0;
-                    for (var doc in snap.docs) {
-                      if (doc.id == 'account') {
-                        final data = doc.data() as Map<String, dynamic>;
-                        totalWeight +=
-                            (data['totalWeightSaved'] as num?)?.toDouble() ??
-                            0.0;
-                      }
-                    }
-                    final rateDoc = await FirebaseFirestore.instance
-                        .collection('market')
-                        .doc('gold_rate')
-                        .get();
-                    final data = rateDoc.data();
-                    final sellPrice =
-                        (data?['sellPrice'] as num?)?.toDouble() ?? 40000.0;
-                    final totalValues = totalWeight * sellPrice;
-
-                    if (totalValues >= 1000000) {
-                      return '฿${(totalValues / 1000000).toStringAsFixed(1)}M';
-                    } else if (totalValues >= 1000) {
-                      return '฿${(totalValues / 1000).toStringAsFixed(1)}k';
-                    }
-                    return '฿${totalValues.toStringAsFixed(0)}';
-                  }),
+                double totalWeight = 0.0;
+                for (var doc in snap.docs) {
+                  if (doc.id == 'account') {
+                    final data = doc.data() as Map<String, dynamic>;
+                    totalWeight += (data['totalWeightSaved'] as num?)?.toDouble() ?? 0.0;
+                  }
+                }
+                final rateDoc = await FirebaseFirestore.instance.collection('market').doc('gold_rate').get();
+                final sellPrice = (rateDoc.data()?['sellPrice'] as num?)?.toDouble() ?? 40000.0;
+                return _formatCurrency(totalWeight * sellPrice);
+              }),
             ),
           ],
         ),
       ],
     );
+  }
+
+  String _formatCurrency(double amount) {
+    bool isNegative = amount < 0;
+    double absAmount = amount.abs();
+    String prefix = isNegative ? '-฿' : '฿';
+    if (absAmount >= 1000000) {
+      return '$prefix${(absAmount / 1000000).toStringAsFixed(1)}M';
+    } else if (absAmount >= 1000) {
+      return '$prefix${(absAmount / 1000).toStringAsFixed(1)}k';
+    }
+    return '$prefix${absAmount.toStringAsFixed(0)}';
   }
 
   Widget _buildRecentActivityList() {
@@ -459,39 +430,48 @@ class _OwnerOverviewTabState extends State<OwnerOverviewTab> {
 
             IconData icon;
             Color iconColor;
-            if (typeStr == 'buy' ||
-                typeStr == 'redeem' ||
-                typeStr == 'savings_deposit') {
+            if (['buy', 'redeem', 'savings_deposit'].contains(typeStr)) {
               icon = Icons.arrow_downward;
-              iconColor = Colors.green; // Money coming in to store
-            } else if (typeStr == 'sell' ||
-                typeStr == 'pawn' ||
-                typeStr == 'savings_withdraw') {
+              iconColor = Colors.green;
+            } else if (['sell', 'pawn', 'savings_withdraw'].contains(typeStr)) {
               icon = Icons.arrow_upward;
-              iconColor = Colors.red; // Money going out from store
+              iconColor = Colors.red;
             } else {
               icon = Icons.swap_horiz;
               iconColor = Colors.grey;
             }
 
-            return Card(
-              margin: const EdgeInsets.only(bottom: 8),
+            return Container(
+              margin: const EdgeInsets.only(bottom: 12),
+              decoration: BoxDecoration(
+                color: Colors.white,
+                borderRadius: BorderRadius.circular(12),
+                boxShadow: [
+                  BoxShadow(
+                    color: Colors.black.withOpacity(0.05),
+                    blurRadius: 10,
+                    offset: const Offset(0, 4),
+                  ),
+                ],
+              ),
               child: ListTile(
                 leading: CircleAvatar(
-                  backgroundColor: iconColor.withOpacity(0.2),
-                  child: Icon(icon, color: iconColor),
+                  backgroundColor: iconColor.withOpacity(0.1),
+                  child: Icon(icon, color: iconColor, size: 20),
                 ),
                 title: Text(
                   details,
+                  style: const TextStyle(fontWeight: FontWeight.bold),
                   maxLines: 1,
                   overflow: TextOverflow.ellipsis,
                 ),
-                subtitle: Text(email),
+                subtitle: Text(email, style: const TextStyle(fontSize: 12)),
                 trailing: Text(
                   '฿${formatter.format(amount)}',
-                  style: const TextStyle(
+                  style: TextStyle(
                     fontWeight: FontWeight.bold,
-                    fontSize: 16,
+                    fontSize: 15,
+                    color: iconColor,
                   ),
                 ),
               ),
@@ -509,6 +489,7 @@ class _MetricCard extends StatelessWidget {
   final Color color;
   final Stream<String> stream;
   final VoidCallback? onTap;
+  final bool isHero;
 
   const _MetricCard({
     required this.title,
@@ -516,58 +497,90 @@ class _MetricCard extends StatelessWidget {
     required this.color,
     required this.stream,
     this.onTap,
+    this.isHero = false,
   });
 
   @override
   Widget build(BuildContext context) {
-    return Card(
-      elevation: 2,
-      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-      child: InkWell(
-        onTap: onTap,
-        borderRadius: BorderRadius.circular(12),
-        child: Padding(
-          padding: const EdgeInsets.all(12.0),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            mainAxisAlignment: MainAxisAlignment.center,
-            children: [
-              Row(
-                children: [
-                  Icon(icon, color: color, size: 24),
-                  const Spacer(),
-                  StreamBuilder<String>(
-                    stream: stream,
-                    builder: (context, snapshot) {
-                      if (snapshot.connectionState == ConnectionState.waiting) {
-                        return const SizedBox(
-                          width: 20,
-                          height: 20,
-                          child: CircularProgressIndicator(strokeWidth: 2),
-                        );
-                      }
-                      return Text(
-                        snapshot.data ?? '0',
-                        style: const TextStyle(
-                          fontSize: 24,
-                          fontWeight: FontWeight.bold,
-                        ),
-                      );
-                    },
-                  ),
-                ],
-              ),
-              const SizedBox(height: 8),
-              Text(
-                title,
-                style: const TextStyle(
-                  color: Colors.grey,
-                  fontWeight: FontWeight.bold,
+    return Container(
+      decoration: BoxDecoration(
+        color: isHero ? color : Colors.white,
+        borderRadius: BorderRadius.circular(16),
+        boxShadow: [
+          BoxShadow(
+            color: color.withOpacity(isHero ? 0.3 : 0.1),
+            blurRadius: 12,
+            offset: const Offset(0, 6),
+          ),
+        ],
+        border: !isHero ? Border.all(color: Colors.grey[200]!) : null,
+      ),
+      child: Material(
+        color: Colors.transparent,
+        child: InkWell(
+          onTap: onTap,
+          borderRadius: BorderRadius.circular(16),
+          child: Padding(
+            padding: const EdgeInsets.all(16.0),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+              children: [
+                Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                  children: [
+                    Container(
+                      padding: const EdgeInsets.all(8),
+                      decoration: BoxDecoration(
+                        color: (isHero ? Colors.white : color).withOpacity(0.2),
+                        borderRadius: BorderRadius.circular(8),
+                      ),
+                      child: Icon(
+                        icon,
+                        color: isHero ? Colors.white : color,
+                        size: isHero ? 28 : 20,
+                      ),
+                    ),
+                    if (onTap != null)
+                      Icon(
+                        Icons.chevron_right,
+                        color: (isHero ? Colors.white : Colors.grey).withOpacity(0.5),
+                        size: 20,
+                      ),
+                  ],
                 ),
-                maxLines: 1,
-                overflow: TextOverflow.ellipsis,
-              ),
-            ],
+                Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    StreamBuilder<String>(
+                      stream: stream,
+                      builder: (context, snapshot) {
+                        return Text(
+                          snapshot.data ?? '--',
+                          style: TextStyle(
+                            fontSize: isHero ? 24 : 20,
+                            fontWeight: FontWeight.bold,
+                            color: isHero ? Colors.white : Colors.black87,
+                            letterSpacing: -0.5,
+                          ),
+                        );
+                      },
+                    ),
+                    const SizedBox(height: 4),
+                    Text(
+                      title,
+                      style: TextStyle(
+                        fontSize: isHero ? 14 : 12,
+                        fontWeight: FontWeight.w600,
+                        color: (isHero ? Colors.white : Colors.grey[600])!.withOpacity(0.8),
+                      ),
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                    ),
+                  ],
+                ),
+              ],
+            ),
           ),
         ),
       ),
