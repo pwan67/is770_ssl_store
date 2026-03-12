@@ -6,6 +6,8 @@ class TransactionRecord {
   final double price; // The actual fiat value transacted
   final DateTime date;
   final String description;
+  final double? cost;
+  final double? profit;
 
   TransactionRecord({
     required this.id,
@@ -15,6 +17,8 @@ class TransactionRecord {
     required this.price,
     required this.date,
     required this.description,
+    this.cost,
+    this.profit,
   });
 
   factory TransactionRecord.fromMap(String id, Map<String, dynamic> data) {
@@ -26,6 +30,8 @@ class TransactionRecord {
       price: (data['price'] ?? 0.0).toDouble(),
       date: data['date'] != null ? DateTime.parse(data['date']) : DateTime.now(),
       description: data['description'] ?? '',
+      cost: (data['cost'] as num?)?.toDouble(),
+      profit: (data['profit'] as num?)?.toDouble(),
     );
   }
 
@@ -37,6 +43,8 @@ class TransactionRecord {
       'price': price,
       'date': date.toIso8601String(),
       'description': description,
+      'cost': cost,
+      'profit': profit,
     };
   }
 }

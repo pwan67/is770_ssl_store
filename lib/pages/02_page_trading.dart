@@ -215,14 +215,23 @@ class _BuyTabState extends State<_BuyTab> {
           ElevatedButton(
             onPressed: (_isProcessing || !hasEnoughFunds) ? null : () async {
               setState(() => _isProcessing = true);
-              try {
-                await widget.service.createTransaction(
-                  assetName: 'Gold Bar (New)',
-                  weight: _weight,
-                  amount: total,
-                  type: TransactionType.buy,
-                  category: 'Bar',
-                );
+                try {
+                  String? productId;
+                  if (_weight == 0.25) productId = 'p_bar_025';
+                  else if (_weight == 0.5) productId = 'p_bar_05';
+                  else if (_weight == 1.0) productId = 'p_bar_1';
+                  else if (_weight == 2.0) productId = 'p_bar_2';
+                  else if (_weight == 5.0) productId = 'p_bar_5';
+                  else if (_weight == 10.0) productId = 'p_bar_10';
+
+                  await widget.service.createTransaction(
+                    assetName: productId != null ? 'Gold Bar ($_weight Baht)' : 'Gold Bar (New)',
+                    weight: _weight,
+                    amount: total,
+                    type: TransactionType.buy,
+                    category: 'Gold Bar',
+                    productId: productId,
+                  );
                 if (mounted) {
                   ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Purchase Successful!')));
                 }

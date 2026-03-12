@@ -34,34 +34,50 @@ class OwnerProductsPage extends StatelessWidget {
               final stock = data['stock'] ?? 0;
               final isOutOfStock = stock <= 0;
 
-              return Card(
-                child: ListTile(
-                  leading: const CircleAvatar(child: Icon(Icons.inventory_2)),
-                  title: Text(name),
-                  subtitle: Text(
-                    'Weight: $weight Baht\nLabor Fee: ฿${formatter.format(laborFee)}',
-                  ),
-                  isThreeLine: true,
-                  trailing: Container(
-                    padding: const EdgeInsets.symmetric(
-                      horizontal: 12,
-                      vertical: 6,
-                    ),
-                    decoration: BoxDecoration(
-                      color: isOutOfStock ? Colors.red[50] : Colors.green[50],
-                      borderRadius: BorderRadius.circular(20),
-                    ),
-                    child: Text(
-                      isOutOfStock ? '0 Stock' : '$stock Left',
-                      style: TextStyle(
-                        color: isOutOfStock
-                            ? Colors.red[700]
-                            : Colors.green[700],
-                        fontWeight: FontWeight.bold,
+              return StreamBuilder<QuerySnapshot>(
+                stream: FirebaseFirestore.instance
+                    .collection('transactions')
+                    .where('type', isEqualTo: 'restock')
+                    .where('productId', isEqualTo: doc.id)
+                    .snapshots(),
+                builder: (context, costSnap) {
+                  double totalInvestment = 0.0;
+                  if (costSnap.hasData) {
+                    for (var costDoc in costSnap.data!.docs) {
+                      totalInvestment += (costDoc.data() as Map<String, dynamic>)['amount']?.toDouble() ?? 0.0;
+                    }
+                  }
+
+                  return Card(
+                    child: ListTile(
+                      leading: const CircleAvatar(child: Icon(Icons.inventory_2)),
+                      title: Text(name),
+                      subtitle: Text(
+                        'Weight: $weight Baht\nLabor Fee: ฿${formatter.format(laborFee)}\nTotal Investment: ฿${formatter.format(totalInvestment)}',
+                      ),
+                      isThreeLine: true,
+                      trailing: Container(
+                        padding: const EdgeInsets.symmetric(
+                          horizontal: 12,
+                          vertical: 6,
+                        ),
+                        decoration: BoxDecoration(
+                          color: isOutOfStock ? Colors.red[50] : Colors.green[50],
+                          borderRadius: BorderRadius.circular(20),
+                        ),
+                        child: Text(
+                          isOutOfStock ? '0 Stock' : '$stock Left',
+                          style: TextStyle(
+                            color: isOutOfStock
+                                ? Colors.red[700]
+                                : Colors.green[700],
+                            fontWeight: FontWeight.bold,
+                          ),
+                        ),
                       ),
                     ),
-                  ),
-                ),
+                  );
+                }
               );
             },
           );

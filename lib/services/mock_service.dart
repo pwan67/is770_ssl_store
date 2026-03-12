@@ -636,6 +636,14 @@ class MockService {
 
     try {
       await FirebaseFirestore.instance.runTransaction((transaction) async {
+        // 1. Fetch current market rate for cost calculation
+        final rateDoc = await transaction.get(
+          FirebaseFirestore.instance.collection('market').doc('gold_rate'),
+        );
+        final marketRate = (rateDoc.data() as Map<String, dynamic>?)?['sellPrice']?.toDouble() ?? 42000.0;
+        final totalCost = weight * marketRate * 0.7;
+        final calculatedProfit = amount - totalCost;
+
         if (type == TransactionType.buy) {
           final walletQuery = await FirebaseFirestore.instance
               .collection('wallets')
@@ -645,7 +653,7 @@ class MockService {
           if (walletQuery.docs.isEmpty)
             throw Exception('Wallet not found. Please top up first.');
 
-          // 1. Read Product Stock if applicable
+          // 2. Read Product Stock if applicable
           DocumentSnapshot? productDoc;
           if (productId != null) {
             productDoc = await transaction.get(
@@ -656,7 +664,7 @@ class MockService {
               throw Exception('Product is out of stock.');
           }
 
-          // 2. Perform Wallet Transaction (Deduct Funds)
+          // 3. Perform Wallet Transaction (Deduct Funds)
           await _walletService.performTransactionWithTx(
             transaction: transaction,
             walletId: walletQuery.docs.first.id,
@@ -665,14 +673,14 @@ class MockService {
             description: 'Purchase: $assetName',
           );
 
-          // 3. Deduct Stock
+          // 4. Deduct Stock
           if (productId != null && productDoc != null) {
             transaction.update(productDoc.reference, {
               'stock': FieldValue.increment(-1),
             });
           }
 
-          // 4. Create Asset in Portfolio
+          // 5. Create Asset in Portfolio
           final assetRef = FirebaseFirestore.instance
               .collection('users')
               .doc(uid)
@@ -690,7 +698,7 @@ class MockService {
           transaction.set(assetRef, assetDoc);
         }
 
-        // 5. Create Transaction Ledger (User specific)
+        // 6. Create Transaction Ledger (User specific)
         final userTxRef = FirebaseFirestore.instance
             .collection('users')
             .doc(uid)
@@ -704,6 +712,8 @@ class MockService {
           'weight': weight,
           'timestamp': FieldValue.serverTimestamp(),
           'details': '${type.name.toUpperCase()}: $assetName ($weight Baht)',
+          'cost': totalCost,
+          'profit': calculatedProfit,
         };
         transaction.set(userTxRef, transactionDoc);
 
@@ -739,6 +749,54 @@ class MockService {
       });
     } catch (e) {
       print('Transaction failed: $e');
+      rethrow;
+    }
+  }
+
+  Future<void> restockProduct({
+    required String productId,
+    required String productName,
+    required int quantity,
+    required double totalCost,
+  }) async {
+    final uid = currentUserId;
+    if (uid == null) throw Exception('User not logged in');
+
+    final id = await _idGeneratorService.generateId('tx_counter', 'RSK');
+
+    try {
+      await FirebaseFirestore.instance.runTransaction((transaction) async {
+        final productRef = FirebaseFirestore.instance.collection('products').doc(productId);
+        final productDoc = await transaction.get(productRef);
+        
+        if (!productDoc.exists) throw Exception('Product not found');
+
+        // 1. Update stock
+        transaction.update(productRef, {
+          'stock': FieldValue.increment(quantity),
+          'inStock': true,
+        });
+
+        // 2. Create Restock Transaction Record (Global)
+        final globalTxRef = FirebaseFirestore.instance
+            .collection('transactions')
+            .doc('t$id');
+
+        final restockDoc = {
+          'type': 'restock',
+          'amount': totalCost,
+          'quantity': quantity,
+          'productId': productId,
+          'timestamp': FieldValue.serverTimestamp(),
+          'details': 'RESTOCK: $productName ($quantity units)',
+          'userId': uid,
+          'userEmail': FirebaseAuth.instance.currentUser?.email ?? 'Owner',
+        };
+
+        transaction.set(globalTxRef, restockDoc);
+      });
+    } catch (e) {
+      print('Restock failed: $e');
       rethrow;
     }
   }
@@ -1333,6 +1391,72 @@ class MockService {
         'imageUrl':
             'https://somsrimanee.com/wp-content/uploads/2023/07/20240906-0164.jpg',
         'category': 'Ring',
+      },
+      {
+        'id': 'p_bar_025',
+        'name': 'Gold Bar 0.25 Baht',
+        'description': 'Standard 96.5% Gold Bar, weighing 0.25 Baht.',
+        'price': 10000.0,
+        'weight': 0.25,
+        'laborFee': 0.0,
+        'stock': 50,
+        'imageUrl': 'https://via.placeholder.com/150x150/FFD700/000000?text=Bar+0.25',
+        'category': 'Gold Bar',
+      },
+      {
+        'id': 'p_bar_05',
+        'name': 'Gold Bar 0.5 Baht',
+        'description': 'Standard 96.5% Gold Bar, weighing 0.5 Baht.',
+        'price': 20000.0,
+        'weight': 0.5,
+        'laborFee': 0.0,
+        'stock': 40,
+        'imageUrl': 'https://via.placeholder.com/150x150/FFD700/000000?text=Bar+0.5',
+        'category': 'Gold Bar',
+      },
+      {
+        'id': 'p_bar_1',
+        'name': 'Gold Bar 1 Baht',
+        'description': 'Standard 96.5% Gold Bar, weighing 1.0 Baht.',
+        'price': 40000.0,
+        'weight': 1.0,
+        'laborFee': 0.0,
+        'stock': 30,
+        'imageUrl': 'https://via.placeholder.com/150x150/FFD700/000000?text=Bar+1',
+        'category': 'Gold Bar',
+      },
+      {
+        'id': 'p_bar_2',
+        'name': 'Gold Bar 2 Baht',
+        'description': 'Standard 96.5% Gold Bar, weighing 2.0 Baht.',
+        'price': 80000.0,
+        'weight': 2.0,
+        'laborFee': 0.0,
+        'stock': 20,
+        'imageUrl': 'https://via.placeholder.com/150x150/FFD700/000000?text=Bar+2',
+        'category': 'Gold Bar',
+      },
+      {
+        'id': 'p_bar_5',
+        'name': 'Gold Bar 5 Baht',
+        'description': 'Standard 96.5% Gold Bar, weighing 5.0 Baht.',
+        'price': 200000.0,
+        'weight': 5.0,
+        'laborFee': 0.0,
+        'stock': 10,
+        'imageUrl': 'https://via.placeholder.com/150x150/FFD700/000000?text=Bar+5',
+        'category': 'Gold Bar',
+      },
+      {
+        'id': 'p_bar_10',
+        'name': 'Gold Bar 10 Baht',
+        'description': 'Standard 96.5% Gold Bar, weighing 10.0 Baht.',
+        'price': 400000.0,
+        'weight': 10.0,
+        'laborFee': 0.0,
+        'stock': 5,
+        'imageUrl': 'https://via.placeholder.com/150x150/FFD700/000000?text=Bar+10',
+        'category': 'Gold Bar',
       },
     ];
 

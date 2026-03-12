@@ -7,6 +7,7 @@ import 'owner_products_page.dart';
 import 'owner_savings_page.dart';
 import 'owner_sales_thb_page.dart';
 import 'owner_sales_qty_page.dart';
+import 'owner_inventory_cost_page.dart';
 
 class OwnerOverviewTab extends StatefulWidget {
   const OwnerOverviewTab({super.key});
@@ -172,6 +173,73 @@ class _OwnerOverviewTabState extends State<OwnerOverviewTab> {
                     return count.toString();
                   }),
             ),
+            _MetricCard(
+              title: 'Total Cost (THB)',
+              icon: Icons.payments,
+              color: Colors.redAccent,
+              stream: FirebaseFirestore.instance
+                  .collection('transactions')
+                  .where('type', isEqualTo: 'buy')
+                  .snapshots()
+                  .map((snap) {
+                    double total = 0.0;
+                    for (var doc in snap.docs) {
+                      final data = doc.data();
+                      final timestamp = (data['timestamp'] as Timestamp?)
+                          ?.toDate();
+                      if (_selectedDateRange != null && timestamp != null) {
+                        if (timestamp.isBefore(_selectedDateRange!.start) ||
+                            timestamp.isAfter(_selectedDateRange!.end)) {
+                          continue;
+                        }
+                      }
+                      total += (data['cost'] as num?)?.toDouble() ?? 0.0;
+                    }
+                    if (total >= 1000000) {
+                      return '฿${(total / 1000000).toStringAsFixed(1)}M';
+                    } else if (total >= 1000) {
+                      return '฿${(total / 1000).toStringAsFixed(1)}k';
+                    }
+                    return '฿${total.toStringAsFixed(0)}';
+                  }),
+            ),
+            _MetricCard(
+              title: 'Total Profit (THB)',
+              icon: Icons.trending_up,
+              color: Colors.green,
+              stream: FirebaseFirestore.instance
+                  .collection('transactions')
+                  .where('type', isEqualTo: 'buy')
+                  .snapshots()
+                  .map((snap) {
+                    double total = 0.0;
+                    for (var doc in snap.docs) {
+                      final data = doc.data();
+                      final timestamp = (data['timestamp'] as Timestamp?)
+                          ?.toDate();
+                      if (_selectedDateRange != null && timestamp != null) {
+                        if (timestamp.isBefore(_selectedDateRange!.start) ||
+                            timestamp.isAfter(_selectedDateRange!.end)) {
+                          continue;
+                        }
+                      }
+                      total += (data['profit'] as num?)?.toDouble() ?? 0.0;
+                    }
+                    bool isNegative = total < 0;
+                    double absTotal = total.abs();
+                    String prefix = isNegative ? '-฿' : '฿';
+                    
+                    String formatted;
+                    if (absTotal >= 1000000) {
+                      formatted = '${(absTotal / 1000000).toStringAsFixed(1)}M';
+                    } else if (absTotal >= 1000) {
+                      formatted = '${(absTotal / 1000).toStringAsFixed(1)}k';
+                    } else {
+                      formatted = absTotal.toStringAsFixed(0);
+                    }
+                    return '$prefix$formatted';
+                  }),
+            ),
           ],
         ),
 
@@ -226,6 +294,64 @@ class _OwnerOverviewTabState extends State<OwnerOverviewTab> {
                   .collection('products')
                   .snapshots()
                   .map((snap) => snap.docs.length.toString()),
+            ),
+            _MetricCard(
+              title: 'Inventory Investment',
+              icon: Icons.inventory,
+              color: Colors.brown,
+              onTap: () => Navigator.push(
+                context,
+                MaterialPageRoute(builder: (_) => const OwnerInventoryCostPage()),
+              ),
+              stream: FirebaseFirestore.instance
+                  .collection('transactions')
+                  .where('type', isEqualTo: 'restock')
+                  .snapshots()
+                  .map((snap) {
+                    double total = 0.0;
+                    for (var doc in snap.docs) {
+                      total += (doc.data()['amount'] as num?)?.toDouble() ?? 0.0;
+                    }
+                    if (total >= 1000000) {
+                      return '฿${(total / 1000000).toStringAsFixed(1)}M';
+                    } else if (total >= 1000) {
+                      return '฿${(total / 1000).toStringAsFixed(1)}k';
+                    }
+                    return '฿${total.toStringAsFixed(0)}';
+                  }),
+            ),
+            _MetricCard(
+              title: 'Inventory Value',
+              icon: Icons.account_balance_wallet,
+              color: Colors.orange,
+              onTap: () => Navigator.push(
+                context,
+                MaterialPageRoute(builder: (_) => const OwnerInventoryCostPage()),
+              ),
+              stream: FirebaseFirestore.instance
+                  .collection('market')
+                  .doc('gold_rate')
+                  .snapshots()
+                  .asyncMap((rateDoc) async {
+                    final data = rateDoc.data();
+                    final marketRate = (data?['sellPrice'] as num?)?.toDouble() ?? 42000.0;
+                    
+                    final productSnap = await FirebaseFirestore.instance.collection('products').get();
+                    double totalValue = 0.0;
+                    for (var doc in productSnap.docs) {
+                      final pData = doc.data();
+                      final stock = (pData['stock'] as num?)?.toInt() ?? 0;
+                      final weight = (pData['weight'] as num?)?.toDouble() ?? 0.0;
+                      totalValue += stock * weight * marketRate * 0.7;
+                    }
+                    
+                    if (totalValue >= 1000000) {
+                      return '฿${(totalValue / 1000000).toStringAsFixed(1)}M';
+                    } else if (totalValue >= 1000) {
+                      return '฿${(totalValue / 1000).toStringAsFixed(1)}k'; 
+                    }
+                    return '฿${totalValue.toStringAsFixed(0)}';
+                  }),
             ),
           ],
         ),

@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:intl/intl.dart';
+import '../../services/mock_service.dart';
 
 class OwnerInventoryTab extends StatelessWidget {
   const OwnerInventoryTab({super.key});
@@ -108,12 +109,9 @@ class OwnerInventoryTab extends StatelessWidget {
                       children: [
                         IconButton(
                           icon: const Icon(Icons.add_circle, color: Color(0xFF1E88E5)),
-                          tooltip: 'Add Stock (+1)',
+                          tooltip: 'Add Stock (Restock)',
                           onPressed: () {
-                            doc.reference.update({
-                              'stock': FieldValue.increment(1),
-                              'inStock': true,
-                            });
+                            _showRestockDialog(context, doc.id, name);
                           },
                         ),
                         IconButton(
@@ -134,6 +132,78 @@ class OwnerInventoryTab extends StatelessWidget {
           },
         );
       },
+    );
+  }
+
+  void _showRestockDialog(BuildContext context, String productId, String productName) {
+    final qtyController = TextEditingController(text: '1');
+    final costController = TextEditingController();
+
+    showDialog(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        title: Text('Restock: $productName'),
+        content: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            TextField(
+              controller: qtyController,
+              decoration: const InputDecoration(labelText: 'Quantity to Add'),
+              keyboardType: TextInputType.number,
+            ),
+            const SizedBox(height: 16),
+            TextField(
+              controller: costController,
+              decoration: const InputDecoration(
+                labelText: 'Total Acquisition Cost (THB)',
+                prefixText: '฿ ',
+              ),
+              keyboardType: const TextInputType.numberWithOptions(decimal: true),
+            ),
+          ],
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(ctx),
+            child: const Text('Cancel'),
+          ),
+          ElevatedButton(
+            onPressed: () async {
+              final qty = int.tryParse(qtyController.text) ?? 0;
+              final cost = double.tryParse(costController.text) ?? 0.0;
+              
+              if (qty <= 0) {
+                ScaffoldMessenger.of(context).showSnackBar(
+                  const SnackBar(content: Text('Please enter a valid quantity.')),
+                );
+                return;
+              }
+
+              try {
+                await MockService().restockProduct(
+                  productId: productId,
+                  productName: productName,
+                  quantity: qty,
+                  totalCost: cost,
+                );
+                if (context.mounted) {
+                  Navigator.pop(ctx);
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    const SnackBar(content: Text('Stock updated and cost recorded successfully.')),
+                  );
+                }
+              } catch (e) {
+                if (context.mounted) {
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    SnackBar(content: Text('Error: $e')),
+                  );
+                }
+              }
+            },
+            child: const Text('Confirm Restock'),
+          ),
+        ],
+      ),
     );
   }
 }

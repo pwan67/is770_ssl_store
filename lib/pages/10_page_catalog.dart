@@ -20,7 +20,7 @@ class _CatalogPageState extends State<CatalogPage> {
   
   String _searchQuery = '';
   String _selectedCategory = 'All';
-  final List<String> _categories = ['All', 'Necklace', 'Ring', 'Bracelet', 'Earrings'];
+  final List<String> _categories = ['All', 'Necklace', 'Ring', 'Bracelet', 'Earrings', 'Gold Bar'];
 
   @override
   void initState() {
