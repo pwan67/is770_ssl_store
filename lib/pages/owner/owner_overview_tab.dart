@@ -173,7 +173,7 @@ class _OwnerOverviewTabState extends State<OwnerOverviewTab> {
           physics: const NeverScrollableScrollPhysics(),
           crossAxisSpacing: 16,
           mainAxisSpacing: 16,
-          childAspectRatio: 1.8,
+          childAspectRatio: 1.3,
           children: [
             _MetricCard(
               title: 'Sales Count',
@@ -245,7 +245,7 @@ class _OwnerOverviewTabState extends State<OwnerOverviewTab> {
           physics: const NeverScrollableScrollPhysics(),
           crossAxisSpacing: 16,
           mainAxisSpacing: 16,
-          childAspectRatio: 1.6,
+          childAspectRatio: 1.3,
           children: [
             _MetricCard(
               title: 'Wallet Balances',
@@ -341,7 +341,7 @@ class _OwnerOverviewTabState extends State<OwnerOverviewTab> {
           physics: const NeverScrollableScrollPhysics(),
           crossAxisSpacing: 16,
           mainAxisSpacing: 16,
-          childAspectRatio: 1.8,
+          childAspectRatio: 1.3,
           children: [
             _MetricCard(
               title: 'Active Pawns',
@@ -521,16 +521,15 @@ class _MetricCard extends StatelessWidget {
           onTap: onTap,
           borderRadius: BorderRadius.circular(16),
           child: Padding(
-            padding: const EdgeInsets.all(16.0),
+            padding: EdgeInsets.all(isHero ? 16.0 : 12.0),
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
-              mainAxisAlignment: MainAxisAlignment.spaceBetween,
               children: [
                 Row(
                   mainAxisAlignment: MainAxisAlignment.spaceBetween,
                   children: [
                     Container(
-                      padding: const EdgeInsets.all(8),
+                      padding: const EdgeInsets.all(6),
                       decoration: BoxDecoration(
                         color: (isHero ? Colors.white : color).withOpacity(0.2),
                         borderRadius: BorderRadius.circular(8),
@@ -538,39 +537,43 @@ class _MetricCard extends StatelessWidget {
                       child: Icon(
                         icon,
                         color: isHero ? Colors.white : color,
-                        size: isHero ? 28 : 20,
+                        size: isHero ? 24 : 18,
                       ),
                     ),
                     if (onTap != null)
                       Icon(
                         Icons.chevron_right,
                         color: (isHero ? Colors.white : Colors.grey).withOpacity(0.5),
-                        size: 20,
+                        size: 16,
                       ),
                   ],
                 ),
+                const Spacer(),
                 Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
                     StreamBuilder<String>(
                       stream: stream,
                       builder: (context, snapshot) {
-                        return Text(
-                          snapshot.data ?? '--',
-                          style: TextStyle(
-                            fontSize: isHero ? 24 : 20,
-                            fontWeight: FontWeight.bold,
-                            color: isHero ? Colors.white : Colors.black87,
-                            letterSpacing: -0.5,
+                        return FittedBox(
+                          fit: BoxFit.scaleDown,
+                          child: Text(
+                            snapshot.data ?? '--',
+                            style: TextStyle(
+                              fontSize: isHero ? 22 : 18,
+                              fontWeight: FontWeight.bold,
+                              color: isHero ? Colors.white : Colors.black87,
+                              letterSpacing: -0.5,
+                            ),
                           ),
                         );
                       },
                     ),
-                    const SizedBox(height: 4),
+                    const SizedBox(height: 2),
                     Text(
                       title,
                       style: TextStyle(
-                        fontSize: isHero ? 14 : 12,
+                        fontSize: isHero ? 13 : 11,
                         fontWeight: FontWeight.w600,
                         color: (isHero ? Colors.white : Colors.grey[600])!.withOpacity(0.8),
                       ),
