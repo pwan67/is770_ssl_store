@@ -21,28 +21,80 @@ class AuthGate extends StatelessWidget {
           return const MainScreen(); // Unauthenticated sees user view
         }
 
-        return StreamBuilder<DocumentSnapshot>(
-          stream: FirebaseFirestore.instance.collection('users').doc(user.uid).snapshots(),
-          builder: (context, userSnapshot) {
-            if (userSnapshot.connectionState == ConnectionState.waiting) {
+        return StreamBuilder<QuerySnapshot>(
+          stream: FirebaseFirestore.instance
+              .collection('users')
+              .where('uid', isEqualTo: user.uid)
+              .snapshots(),
+          builder: (context, querySnapshot) {
+            if (querySnapshot.connectionState == ConnectionState.waiting) {
               return const Scaffold(body: Center(child: CircularProgressIndicator()));
             }
 
-            if (!userSnapshot.hasData || !userSnapshot.data!.exists) {
-              return const MainScreen(); // Fallback
+            // If no doc found by UID, we need to try finding by email as well.
+            // Since we can't easily chain async queries in a StreamBuilder's stream property,
+            // we'll use FutureBuilder or a nested StreamBuilder if UID is missing,
+            // but here we can just check the data we have.
+            
+            List<DocumentSnapshot> docs = querySnapshot.data?.docs ?? [];
+            
+            if (docs.isEmpty && user.email != null) {
+              // Fallback to searching by email if UID query yields nothing
+              return FutureBuilder<QuerySnapshot>(
+                future: FirebaseFirestore.instance
+                    .collection('users')
+                    .where('email', isEqualTo: user.email)
+                    .limit(1)
+                    .get(),
+                builder: (context, emailSnapshot) {
+                   if (emailSnapshot.connectionState == ConnectionState.waiting) {
+                     return const Scaffold(body: Center(child: CircularProgressIndicator()));
+                   }
+                   
+                   final emailDocs = emailSnapshot.data?.docs ?? [];
+                   if (emailDocs.isEmpty) {
+                     print('DEBUG: AuthGate - No document found by UID or Email for ${user.email}');
+                     return const MainScreen();
+                   }
+                   
+                   return _buildPlatformByRole(emailDocs.first);
+                },
+              );
             }
 
-            final data = userSnapshot.data!.data() as Map<String, dynamic>?;
-            final role = data?['role'] ?? 'user';
-
-            if (role == 'owner') {
-              return const OwnerDashboardPage();
+            if (docs.isEmpty) {
+              return const MainScreen();
             }
 
-            return const MainScreen();
+            // Prefer 'owner' role if multiple documents exist (unlikely but safe)
+            // Using a simple loop to avoid type inference issues with firstWhere's orElse
+            DocumentSnapshot userDoc = docs.first;
+            for (final doc in docs) {
+              final data = doc.data() as Map<String, dynamic>?;
+              if (data?['role'] == 'owner') {
+                userDoc = doc;
+                break;
+              }
+            }
+
+            return _buildPlatformByRole(userDoc);
           },
         );
       },
     );
+  }
+
+  Widget _buildPlatformByRole(DocumentSnapshot userSnapshot) {
+    final data = userSnapshot.data() as Map<String, dynamic>?;
+    final role = data?['role'] ?? 'user';
+    final email = data?['email'] ?? 'unknown';
+
+    print('DEBUG: AuthGate - Resolved role "$role" for user $email');
+
+    if (role == 'owner') {
+      return const OwnerDashboardPage();
+    }
+
+    return const MainScreen();
   }
 }

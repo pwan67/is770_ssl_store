@@ -3,6 +3,7 @@ import 'package:firebase_auth/firebase_auth.dart' hide EmailAuthProvider;
 import '../services/auth_service.dart';
 import '../services/mock_service.dart';
 import 'package:intl/intl.dart';
+import '01_page_login.dart';
 import '03_page_appointment.dart';
 import '14_page_edit_profile.dart';
 import '15_page_transactions.dart';
@@ -39,7 +40,10 @@ class _ProfilePageState extends State<ProfilePage> {
         } else {
           return _ProfileGuestView(
             onLoginRequest: () {
-              Navigator.pushNamed(context, '/login');
+              Navigator.push(context, MaterialPageRoute(builder: (_) => const LoginPage(initialIsLogin: true)));
+            },
+            onSignUpRequest: () {
+              Navigator.push(context, MaterialPageRoute(builder: (_) => const LoginPage(initialIsLogin: false)));
             },
           );
         }
@@ -51,7 +55,8 @@ class _ProfilePageState extends State<ProfilePage> {
 // ── Guest View (Landing) ─────────────────────────────────────────────────────
 class _ProfileGuestView extends StatelessWidget {
   final VoidCallback onLoginRequest;
-  const _ProfileGuestView({required this.onLoginRequest});
+  final VoidCallback onSignUpRequest;
+  const _ProfileGuestView({required this.onLoginRequest, required this.onSignUpRequest});
 
   @override
   Widget build(BuildContext context) {
@@ -130,7 +135,7 @@ class _ProfileGuestView extends StatelessWidget {
                     SizedBox(
                       width: double.infinity,
                       child: OutlinedButton.icon(
-                        onPressed: onLoginRequest,
+                        onPressed: onSignUpRequest,
                         icon: const Icon(Icons.person_add),
                         label: const Text('Sign Up', style: TextStyle(fontSize: 16)),
                         style: OutlinedButton.styleFrom(
@@ -291,6 +296,26 @@ class _ProfileMemberView extends StatelessWidget {
                     await MockService().seedDummyProducts();
                     if (context.mounted) {
                       ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Products synced successfully!')));
+                    }
+                  } catch (e) {
+                    if (context.mounted) {
+                      ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Error: $e')));
+                    }
+                  }
+                },
+                trailing: const Icon(Icons.admin_panel_settings, color: Colors.grey),
+              ),
+              _buildDivider(),
+              _buildListTile(
+                icon: Icons.numbers,
+                title: 'Sync ID Database',
+                subtitle: 'Admin: Align running numbers with existing records',
+                onTap: () async {
+                  try {
+                    ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Syncing ID counters...')));
+                    await MockService().repairAllCounters();
+                    if (context.mounted) {
+                      ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('ID counters synced successfully!')));
                     }
                   } catch (e) {
                     if (context.mounted) {

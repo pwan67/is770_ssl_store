@@ -70,18 +70,18 @@ class DefaultFirebaseOptions {
   );
 
   static const FirebaseOptions webDev = FirebaseOptions(
-    apiKey: 'DEV_API_KEY_WEB',
-    appId: 'DEV_APP_ID_WEB',
-    messagingSenderId: 'DEV_SENDER_ID',
+    apiKey: 'REPLACE_WITH_YOUR_DEV_WEB_API_KEY', // WARNING: Placeholder key
+    appId: 'REPLACE_WITH_YOUR_DEV_WEB_APP_ID',    // WARNING: Placeholder ID
+    messagingSenderId: 'REPLACE_WITH_YOUR_DEV_SENDER_ID',
     projectId: 'store-backend-dev',
     authDomain: 'store-backend-dev.firebaseapp.com',
     storageBucket: 'store-backend-dev.firebasestorage.app',
   );
 
   static const FirebaseOptions androidDev = FirebaseOptions(
-    apiKey: 'DEV_API_KEY_ANDROID',
-    appId: 'DEV_APP_ID_ANDROID',
-    messagingSenderId: 'DEV_SENDER_ID',
+    apiKey: 'REPLACE_WITH_YOUR_DEV_ANDROID_API_KEY', // WARNING: Placeholder key
+    appId: 'REPLACE_WITH_YOUR_DEV_ANDROID_APP_ID',   // WARNING: Placeholder ID
+    messagingSenderId: 'REPLACE_WITH_YOUR_DEV_SENDER_ID',
     projectId: 'store-backend-dev',
     storageBucket: 'store-backend-dev.firebasestorage.app',
   );

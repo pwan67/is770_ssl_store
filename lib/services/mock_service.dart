@@ -32,6 +32,26 @@ class MockService {
   // Get current user ID
   String? get currentUserId => FirebaseAuth.instance.currentUser?.uid;
 
+  // Helper to find the sequential user document by Auth UID
+  Future<DocumentReference> _getUserDocRef(String uid) async {
+    final query = await FirebaseFirestore.instance
+        .collection('users')
+        .where('uid', isEqualTo: uid)
+        .limit(1)
+        .get();
+    if (query.docs.isEmpty) {
+      throw Exception('User document not found for UI profile retrieval.');
+    }
+    return query.docs.first.reference;
+  }
+
+  Future<void> repairAllCounters() async {
+    await _idGeneratorService.repairCounter('users');
+    await _idGeneratorService.repairCounter('receipts');
+    await _idGeneratorService.repairCounter('products');
+    await _idGeneratorService.repairCounter('transactions');
+  }
+
   Future<void> _generateInitialNews() async {
     final batch = FirebaseFirestore.instance.batch();
     final newsList = [
@@ -320,11 +340,9 @@ class MockService {
   Future<Map<String, dynamic>> getUserProfile() async {
     final uid = currentUserId;
     if (uid == null) throw Exception('User not logged in');
-    final doc = await FirebaseFirestore.instance
-        .collection('users')
-        .doc(uid)
-        .get();
-    return doc.data() ?? {};
+    final userRef = await _getUserDocRef(uid);
+    final doc = await userRef.get();
+    return doc.data() as Map<String, dynamic>? ?? {};
   }
 
   Future<void> updateUserProfile({
@@ -339,10 +357,8 @@ class MockService {
       'lastName': lastName,
       'phoneNumber': phoneNumber,
     };
-    await FirebaseFirestore.instance
-        .collection('users')
-        .doc(uid)
-        .set(data, SetOptions(merge: true));
+    final userRef = await _getUserDocRef(uid);
+    await userRef.set(data, SetOptions(merge: true));
 
     final user = FirebaseAuth.instance.currentUser;
     if (user != null) {
@@ -367,7 +383,8 @@ class MockService {
     );
     final url = await uploadTask.ref.getDownloadURL();
 
-    await FirebaseFirestore.instance.collection('users').doc(uid).set({
+    final userRef = await _getUserDocRef(uid);
+    await userRef.set({
       'photoUrl': url,
     }, SetOptions(merge: true));
 
@@ -382,12 +399,10 @@ class MockService {
     final uid = currentUserId;
     if (uid == null) return Stream.value([]);
 
-    return FirebaseFirestore.instance
-        .collection('users')
-        .doc(uid)
-        .collection('assets')
-        .snapshots()
-        .map((snapshot) {
+    final userRefFuture = _getUserDocRef(uid);
+    
+    return Stream.fromFuture(userRefFuture).asyncExpand((userRef) {
+      return userRef.collection('assets').snapshots().map((snapshot) {
           return snapshot.docs.map((doc) {
             final data = doc.data();
             return GoldAsset(
@@ -412,6 +427,7 @@ class MockService {
             );
           }).toList();
         });
+    });
   }
 
   Stream<List<GoldTransaction>> getTransactionHistoryStream() {
@@ -419,9 +435,8 @@ class MockService {
     if (uid == null) return Stream.value([]);
 
     return FirebaseFirestore.instance
-        .collection('users')
-        .doc(uid)
         .collection('transactions')
+        .where('userId', isEqualTo: uid)
         .orderBy('timestamp', descending: true)
         .snapshots()
         .map((snapshot) {
@@ -466,7 +481,7 @@ class MockService {
     });
   }
 
-  Future<void> _generateInitialNotifications(String uid) async {
+  Future<void> _generateInitialNotifications(CollectionReference collection) async {
     final batch = FirebaseFirestore.instance.batch();
     final notifs = [
       NotificationItem(
@@ -512,11 +527,7 @@ class MockService {
     ];
 
     for (var n in notifs) {
-      final docRef = FirebaseFirestore.instance
-          .collection('users')
-          .doc(uid)
-          .collection('notifications')
-          .doc(n.id);
+      final docRef = collection.doc(n.id);
       batch.set(docRef, n.toMap());
     }
     await batch.commit();
@@ -526,33 +537,34 @@ class MockService {
     final uid = currentUserId;
     if (uid == null) return Stream.value([]);
 
-    final collection = FirebaseFirestore.instance
-        .collection('users')
-        .doc(uid)
-        .collection('notifications');
+    final userRefFuture = _getUserDocRef(uid);
+    final collectionFuture = userRefFuture.then((ref) => ref.collection('notifications'));
 
     // Auto-generate if empty
-    collection.limit(1).get().then((snapshot) {
-      if (snapshot.docs.isEmpty) {
-        _generateInitialNotifications(uid);
-      }
+    collectionFuture.then((collection) {
+      collection.limit(1).get().then((snapshot) {
+        if (snapshot.docs.isEmpty) {
+          _generateInitialNotifications(collection);
+        }
+      });
     });
 
-    return collection.orderBy('timestamp', descending: true).snapshots().map((
-      snapshot,
-    ) {
-      return snapshot.docs
-          .map((doc) => NotificationItem.fromMap(doc.id, doc.data()))
-          .toList();
+    return Stream.fromFuture(collectionFuture).asyncExpand((collection) {
+      return collection.orderBy('timestamp', descending: true).snapshots().map((
+        snapshot,
+      ) {
+        return snapshot.docs
+            .map((doc) => NotificationItem.fromMap(doc.id, doc.data()))
+            .toList();
+      });
     });
   }
 
   Future<void> markNotificationAsRead(String notificationId) async {
     final uid = currentUserId;
     if (uid == null) return;
-    await FirebaseFirestore.instance
-        .collection('users')
-        .doc(uid)
+    final userRef = await _getUserDocRef(uid);
+    await userRef
         .collection('notifications')
         .doc(notificationId)
         .update({'isRead': true});
@@ -562,10 +574,8 @@ class MockService {
     final uid = currentUserId;
     if (uid == null) return;
 
-    final collection = FirebaseFirestore.instance
-        .collection('users')
-        .doc(uid)
-        .collection('notifications');
+    final userRef = await _getUserDocRef(uid);
+    final collection = userRef.collection('notifications');
     final unreadDocs = await collection.where('isRead', isEqualTo: false).get();
 
     if (unreadDocs.docs.isEmpty) return;
@@ -581,9 +591,8 @@ class MockService {
     final uid = currentUserId;
     if (uid == null) return;
 
-    await FirebaseFirestore.instance
-        .collection('users')
-        .doc(uid)
+    final userRef = await _getUserDocRef(uid);
+    await userRef
         .collection('notifications')
         .doc(notificationId)
         .delete();
@@ -593,10 +602,8 @@ class MockService {
     final uid = currentUserId;
     if (uid == null) return;
 
-    final collection = FirebaseFirestore.instance
-        .collection('users')
-        .doc(uid)
-        .collection('notifications');
+    final userRef = await _getUserDocRef(uid);
+    final collection = userRef.collection('notifications');
     final allDocs = await collection.get();
 
     if (allDocs.docs.isEmpty) return;
@@ -616,6 +623,9 @@ class MockService {
     String? category,
     String? productId, // For simulated stock reduction
   }) async {
+    // Repair existing data if needed (one-time for this session/demo)
+    await _repairPawnData();
+
     // Simulate network delay
     await Future.delayed(const Duration(seconds: 1));
 
@@ -632,7 +642,7 @@ class MockService {
     else if (type == TransactionType.redeem)
       prefix = 'RED';
 
-    final id = await _idGeneratorService.generateId('tx_counter', prefix);
+    final id = await _idGeneratorService.generateId('transactions', prefixOverride: prefix);
 
     try {
       await FirebaseFirestore.instance.runTransaction((transaction) async {
@@ -659,9 +669,14 @@ class MockService {
             productDoc = await transaction.get(
               FirebaseFirestore.instance.collection('products').doc(productId),
             );
-            if (!productDoc.exists) throw Exception('Product not found.');
-            if ((productDoc.data() as Map<String, dynamic>)['stock'] <= 0)
-              throw Exception('Product is out of stock.');
+            // If product doesn't exist, we just skip stock deduction rather than failing (for demo resilience)
+            if (productDoc.exists) {
+               if ((productDoc.data() as Map<String, dynamic>)['stock'] <= 0) {
+                 throw Exception('Product is out of stock.');
+               }
+            } else {
+               productDoc = null; // Reset to null so we don't try to update it
+            }
           }
 
           // 3. Perform Wallet Transaction (Deduct Funds)
@@ -681,11 +696,8 @@ class MockService {
           }
 
           // 5. Create Asset in Portfolio
-          final assetRef = FirebaseFirestore.instance
-              .collection('users')
-              .doc(uid)
-              .collection('assets')
-              .doc('a$id');
+          final userRef = await _getUserDocRef(uid);
+          final assetRef = userRef.collection('assets').doc('a$id');
 
           final assetDoc = {
             'name': assetName,
@@ -696,15 +708,28 @@ class MockService {
             'status': 'owned',
           };
           transaction.set(assetRef, assetDoc);
+        } else if (type == TransactionType.pawn) {
+          // 4. Create Asset in Portfolio for Pawn
+          final userRef = await _getUserDocRef(uid);
+          final assetRef = userRef
+              .collection('assets')
+              .doc('a$id');
+
+          final assetDoc = {
+            'name': assetName,
+            'weight': weight,
+            'category': category ?? 'General',
+            'acquisitionDate': FieldValue.serverTimestamp(),
+            'acquisitionPrice': amount,
+            'status': 'pawned',
+            'loanAmount': amount,
+            'pawnDate': FieldValue.serverTimestamp(),
+            'dueDate': Timestamp.fromDate(DateTime.now().add(const Duration(days: 30))),
+          };
+          transaction.set(assetRef, assetDoc);
         }
 
-        // 6. Create Transaction Ledger (User specific)
-        final userTxRef = FirebaseFirestore.instance
-            .collection('users')
-            .doc(uid)
-            .collection('transactions')
-            .doc('t$id');
-
+        // 6. Create Transaction Ledger (Root Collection)
         final transactionDoc = {
           'assetId': 'a$id',
           'type': type.name,
@@ -714,25 +739,18 @@ class MockService {
           'details': '${type.name.toUpperCase()}: $assetName ($weight Baht)',
           'cost': totalCost,
           'profit': calculatedProfit,
+          'userId': uid,
+          'userEmail': FirebaseAuth.instance.currentUser?.email ?? 'Unknown Email',
         };
-        transaction.set(userTxRef, transactionDoc);
-
-        // 6. Create Global Transaction Record
         final globalTxRef = FirebaseFirestore.instance
             .collection('transactions')
             .doc('t$id');
-
-        final globalTxDoc = Map<String, dynamic>.from(transactionDoc);
-        globalTxDoc['userId'] = uid;
-        globalTxDoc['userEmail'] =
-            FirebaseAuth.instance.currentUser?.email ?? 'Unknown Email';
-        transaction.set(globalTxRef, globalTxDoc);
+        transaction.set(globalTxRef, transactionDoc);
 
         // 7. Add Notification
         final notifId = DateTime.now().millisecondsSinceEpoch.toString();
-        final notifRef = FirebaseFirestore.instance
-            .collection('users')
-            .doc(uid)
+        final userRef = await _getUserDocRef(uid);
+        final notifRef = userRef
             .collection('notifications')
             .doc('n_$notifId');
         final formatter = NumberFormat('#,##0.00');
@@ -762,7 +780,7 @@ class MockService {
     final uid = currentUserId;
     if (uid == null) throw Exception('User not logged in');
 
-    final id = await _idGeneratorService.generateId('tx_counter', 'RSK');
+    final id = await _idGeneratorService.generateId('transactions', prefixOverride: 'RSK');
 
     try {
       await FirebaseFirestore.instance.runTransaction((transaction) async {
@@ -818,9 +836,8 @@ class MockService {
         if (walletQuery.docs.isEmpty) throw Exception('Wallet not found');
 
         // 1. Get asset ref to delete
-        final assetRef = FirebaseFirestore.instance
-            .collection('users')
-            .doc(uid)
+        final userRef = await _getUserDocRef(uid);
+        final assetRef = userRef
             .collection('assets')
             .doc(asset.id);
 
@@ -840,15 +857,9 @@ class MockService {
         // 3. Remove the asset from the user's portfolio
         transaction.delete(assetRef);
 
-        // 4. Create the Sell Transaction record
-        final id = await _idGeneratorService.generateId('tx_counter', 'SEL');
-
-        final userTxRef = FirebaseFirestore.instance
-            .collection('users')
-            .doc(uid)
-            .collection('transactions')
-            .doc('t$id');
-
+        // 4. Create the Sell Transaction record (Root)
+        final id = await _idGeneratorService.generateId('transactions', prefixOverride: 'SEL');
+ 
         final transactionDoc = {
           'assetId': asset.id,
           'type': TransactionType.sell.name,
@@ -856,30 +867,18 @@ class MockService {
           'weight': asset.weight,
           'timestamp': FieldValue.serverTimestamp(),
           'details': 'SELL: ${asset.name} (${asset.weight} Baht)',
+          'userId': uid,
+          'userEmail': FirebaseAuth.instance.currentUser?.email ?? 'Unknown Email',
         };
-
-        // Write to user transactions
-        transaction.set(userTxRef, transactionDoc);
-
-        // Write to global transactions for store admins
+ 
         final globalTxRef = FirebaseFirestore.instance
             .collection('transactions')
             .doc('t$id');
-
-        final globalTxDoc = Map<String, dynamic>.from(transactionDoc);
-        globalTxDoc['userId'] = uid;
-        globalTxDoc['userEmail'] =
-            FirebaseAuth.instance.currentUser?.email ?? 'Unknown Email';
-
-        transaction.set(globalTxRef, globalTxDoc);
+        transaction.set(globalTxRef, transactionDoc);
 
         // 5. Add a notification
         final notifId = DateTime.now().millisecondsSinceEpoch.toString();
-        final notifRef = FirebaseFirestore.instance
-            .collection('users')
-            .doc(uid)
-            .collection('notifications')
-            .doc('n_$notifId');
+        final notifRef = userRef.collection('notifications').doc('n_$notifId');
         final formatter = NumberFormat('#,##0.00');
         final notif = NotificationItem(
           id: notifId,
@@ -915,9 +914,8 @@ class MockService {
         if (walletQuery.docs.isEmpty) throw Exception('Wallet not found');
 
         // 1. Get asset ref to verify and update
-        final assetRef = FirebaseFirestore.instance
-            .collection('users')
-            .doc(uid)
+        final userRef = await _getUserDocRef(uid);
+        final assetRef = userRef
             .collection('assets')
             .doc(asset.id);
 
@@ -946,15 +944,9 @@ class MockService {
           'interestRate': interestRate,
         });
 
-        // 4. Create Pawn Transaction
-        final id = await _idGeneratorService.generateId('tx_counter', 'PWN');
-
-        final userTxRef = FirebaseFirestore.instance
-            .collection('users')
-            .doc(uid)
-            .collection('transactions')
-            .doc('t$id');
-
+        // 4. Create Pawn Transaction (Root)
+        final id = await _idGeneratorService.generateId('transactions', prefixOverride: 'PWN');
+ 
         final transactionDoc = {
           'assetId': asset.id,
           'type': TransactionType.pawn.name,
@@ -966,22 +958,16 @@ class MockService {
           'userEmail':
               FirebaseAuth.instance.currentUser?.email ?? 'Unknown Email',
         };
-
-        transaction.set(userTxRef, transactionDoc);
-
+ 
         final globalTxRef = FirebaseFirestore.instance
             .collection('transactions')
             .doc('t$id');
-
+ 
         transaction.set(globalTxRef, transactionDoc);
 
         // 5. Add a notification
         final notifId = DateTime.now().millisecondsSinceEpoch.toString();
-        final notifRef = FirebaseFirestore.instance
-            .collection('users')
-            .doc(uid)
-            .collection('notifications')
-            .doc('n_$notifId');
+        final notifRef = userRef.collection('notifications').doc('n_$notifId');
         final formatter = NumberFormat('#,##0.00');
         final notif = NotificationItem(
           id: notifId,
@@ -1018,9 +1004,8 @@ class MockService {
         if (walletQuery.docs.isEmpty) throw Exception('Wallet not found');
 
         // Verify Asset exists and is pawned
-        final assetRef = FirebaseFirestore.instance
-            .collection('users')
-            .doc(uid)
+        final userRef = await _getUserDocRef(uid);
+        final assetRef = userRef
             .collection('assets')
             .doc(asset.id);
 
@@ -1047,15 +1032,9 @@ class MockService {
           'interestRate': FieldValue.delete(),
         });
 
-        // 4. Create Redeem Transaction
-        final id = await _idGeneratorService.generateId('tx_counter', 'RED');
-
-        final userTxRef = FirebaseFirestore.instance
-            .collection('users')
-            .doc(uid)
-            .collection('transactions')
-            .doc('t$id');
-
+        // 4. Create Redeem Transaction (Root)
+        final id = await _idGeneratorService.generateId('transactions', prefixOverride: 'RED');
+ 
         final transactionDoc = {
           'assetId': asset.id,
           'type': TransactionType.redeem.name,
@@ -1067,22 +1046,16 @@ class MockService {
           'userEmail':
               FirebaseAuth.instance.currentUser?.email ?? 'Unknown Email',
         };
-
-        transaction.set(userTxRef, transactionDoc);
-
+ 
         final globalTxRef = FirebaseFirestore.instance
             .collection('transactions')
             .doc('t$id');
-
+ 
         transaction.set(globalTxRef, transactionDoc);
 
         // 5. Add a notification
         final notifId = DateTime.now().millisecondsSinceEpoch.toString();
-        final notifRef = FirebaseFirestore.instance
-            .collection('users')
-            .doc(uid)
-            .collection('notifications')
-            .doc('n_$notifId');
+        final notifRef = userRef.collection('notifications').doc('n_$notifId');
         final formatter = NumberFormat('#,##0.00');
         final notif = NotificationItem(
           id: notifId,
@@ -1493,41 +1466,45 @@ class MockService {
       );
     }
 
-    return FirebaseFirestore.instance
-        .collection('users')
-        .doc(uid)
-        .collection('savings')
-        .doc('account')
-        .snapshots()
-        .map((snapshot) {
-          if (!snapshot.exists || snapshot.data() == null) {
-            return GoldSavingsAccount(
-              totalWeightSaved: 0.0,
-              totalAmountInvested: 0.0,
-              lastUpdated: DateTime.now(),
-            );
-          }
-          return GoldSavingsAccount.fromMap(snapshot.data()!);
-        });
+    final userRefFuture = _getUserDocRef(uid);
+
+    return Stream.fromFuture(userRefFuture).asyncExpand((userRef) {
+      return userRef
+          .collection('savings')
+          .doc('account')
+          .snapshots()
+          .map((snapshot) {
+            if (!snapshot.exists || snapshot.data() == null) {
+              return GoldSavingsAccount(
+                totalWeightSaved: 0.0,
+                totalAmountInvested: 0.0,
+                lastUpdated: DateTime.now(),
+              );
+            }
+            return GoldSavingsAccount.fromMap(snapshot.data()!);
+          });
+    });
   }
 
   Stream<List<GoldSavingsTransaction>> getGoldSavingsTransactionsStream() {
     final uid = currentUserId;
     if (uid == null) return Stream.value([]);
 
-    return FirebaseFirestore.instance
-        .collection('users')
-        .doc(uid)
-        .collection('savings')
-        .doc('account')
-        .collection('transactions')
-        .orderBy('timestamp', descending: true)
-        .snapshots()
-        .map((snapshot) {
-          return snapshot.docs
-              .map((doc) => GoldSavingsTransaction.fromMap(doc.id, doc.data()))
-              .toList();
-        });
+    final userRefFuture = _getUserDocRef(uid);
+
+    return Stream.fromFuture(userRefFuture).asyncExpand((userRef) {
+      return userRef
+          .collection('savings')
+          .doc('account')
+          .collection('transactions')
+          .orderBy('timestamp', descending: true)
+          .snapshots()
+          .map((snapshot) {
+            return snapshot.docs
+                .map((doc) => GoldSavingsTransaction.fromMap(doc.id, doc.data()))
+                .toList();
+          });
+    });
   }
 
   Future<void> depositToGoldSavings(
@@ -1539,85 +1516,80 @@ class MockService {
 
     await Future.delayed(const Duration(seconds: 1)); // Network simulation
 
-    // 1. Check wallet balance
-    final userDoc = await FirebaseFirestore.instance
-        .collection('users')
-        .doc(uid)
+    // 1. Find the wallet first
+    final walletQuery = await FirebaseFirestore.instance
+        .collection('wallets')
+        .where('userId', isEqualTo: uid)
+        .limit(1)
         .get();
-    final currentBalance = (userDoc.data()?['walletBalance'] ?? 0.0 as num)
-        .toDouble();
+    if (walletQuery.docs.isEmpty) throw Exception('Wallet not found');
+    final walletId = walletQuery.docs.first.id;
+    final userRef = await _getUserDocRef(uid);
 
-    if (currentBalance < amountInTHB) {
-      throw Exception('Insufficient wallet balance. Please add funds first.');
-    }
+    await FirebaseFirestore.instance.runTransaction((transaction) async {
+      // 2. Process wallet transaction (vaildates balance internally)
+      await _walletService.performTransactionWithTx(
+        transaction: transaction,
+        walletId: walletId,
+        amount: amountInTHB,
+        type: WalletTransactionType.purchase, // Purchase of gold
+        description: 'Gold Savings Deposit',
+      );
 
-    // 2. Calculate fractional weight gained
-    final weightGained = amountInTHB / currentBuyPricePerBaht;
+      // 3. Update the aggregate savings account
+      final savingsRef = userRef.collection('savings').doc('account');
+      final weightGained = amountInTHB / currentBuyPricePerBaht;
+      
+      transaction.set(savingsRef, {
+        'totalWeightSaved': FieldValue.increment(weightGained),
+        'totalAmountInvested': FieldValue.increment(amountInTHB),
+        'lastUpdated': FieldValue.serverTimestamp(),
+      }, SetOptions(merge: true));
 
-    final batch = FirebaseFirestore.instance.batch();
+      // 4. Create the transaction record
+      final txId = DateTime.now().millisecondsSinceEpoch.toString();
+      final txRef = savingsRef.collection('transactions').doc('stx_$txId');
+      final stx = GoldSavingsTransaction(
+        id: txId,
+        amountInvested: amountInTHB,
+        weightGained: weightGained,
+        buyPriceAtTransaction: currentBuyPricePerBaht,
+        timestamp: DateTime.now(),
+      );
+      transaction.set(txRef, stx.toMap());
 
-    // 3. Deduct THB from wallet
-    final userRef = FirebaseFirestore.instance.collection('users').doc(uid);
-    batch.update(userRef, {
-      'walletBalance': FieldValue.increment(-amountInTHB),
+      // 5. Add global transaction record
+      final formatter = NumberFormat('#,##0.00');
+      final globalTxDoc = {
+        'assetId': 'savings',
+        'type': TransactionType.savings_deposit.name,
+        'amount': amountInTHB,
+        'weight': weightGained,
+        'timestamp': FieldValue.serverTimestamp(),
+        'details': 'SAVINGS: Deposited ฿${formatter.format(amountInTHB)}',
+        'userId': uid,
+        'userEmail': FirebaseAuth.instance.currentUser?.email ?? 'Unknown Email',
+      };
+      
+      final globalTransactionsRef = FirebaseFirestore.instance
+          .collection('transactions')
+          .doc('t$txId');
+      transaction.set(globalTransactionsRef, globalTxDoc);
+
+      // 6. Add a notification
+      final notifId = DateTime.now().millisecondsSinceEpoch.toString();
+      final notifRef = userRef.collection('notifications').doc('n_$notifId');
+      final notif = NotificationItem(
+        id: notifId,
+        title: 'Gold Savings Deposit',
+        message:
+            'Successfully deposited ฿${formatter.format(amountInTHB)} toward your Gold Savings. Gained ${weightGained.toStringAsFixed(4)} Baht.',
+        type: 'savings',
+        timestamp: DateTime.now(),
+        isRead: false,
+      );
+      transaction.set(notifRef, notif.toMap());
     });
-
-    // 4. Update the aggregate savings account
-    final savingsRef = userRef.collection('savings').doc('account');
-    batch.set(savingsRef, {
-      'totalWeightSaved': FieldValue.increment(weightGained),
-      'totalAmountInvested': FieldValue.increment(amountInTHB),
-      'lastUpdated': FieldValue.serverTimestamp(),
-    }, SetOptions(merge: true));
-
-    // 5. Create the transaction record
-    final txId = DateTime.now().millisecondsSinceEpoch.toString();
-    final txRef = savingsRef.collection('transactions').doc('stx_$txId');
-    final stx = GoldSavingsTransaction(
-      id: txId,
-      amountInvested: amountInTHB,
-      weightGained: weightGained,
-      buyPriceAtTransaction: currentBuyPricePerBaht,
-      timestamp: DateTime.now(),
-    );
-    batch.set(txRef, stx.toMap());
-
-    // 6. Add global transaction record
-    final formatter = NumberFormat('#,##0.00');
-    final globalTxDoc = {
-      'assetId': 'savings',
-      'type': TransactionType.savings_deposit.name, // Log specific Savings type
-      'amount': amountInTHB,
-      'weight': weightGained,
-      'timestamp': FieldValue.serverTimestamp(),
-      'details': 'SAVINGS: Deposited ฿${formatter.format(amountInTHB)}',
-      'userId': uid,
-      'userEmail': FirebaseAuth.instance.currentUser?.email ?? 'Unknown Email',
-    };
-
-    final userTxRef = userRef.collection('transactions').doc('t$txId');
-    batch.set(userTxRef, globalTxDoc);
-
-    final globalTransactionsRef = FirebaseFirestore.instance
-        .collection('transactions')
-        .doc('t$txId');
-    batch.set(globalTransactionsRef, globalTxDoc);
-
-    // 7. Add a notification
-    final notifId = DateTime.now().millisecondsSinceEpoch.toString();
-    final notifRef = userRef.collection('notifications').doc('n_$notifId');
-    final notif = NotificationItem(
-      id: notifId,
-      title: 'Gold Savings Deposit',
-      message:
-          'Successfully deposited ฿${formatter.format(amountInTHB)} toward your Gold Savings. Gained ${weightGained.toStringAsFixed(4)} Baht.',
-      type: 'savings',
-      timestamp: DateTime.now(),
-      isRead: false,
-    );
-    batch.set(notifRef, notif.toMap());
-
-    await batch.commit();
   }
 
   Future<void> sellFromGoldSavings(
@@ -1629,95 +1601,137 @@ class MockService {
 
     await Future.delayed(const Duration(seconds: 1)); // Network simulation
 
-    // 1. Check if user has enough saved gold weight
-    final savingsDoc = await FirebaseFirestore.instance
-        .collection('users')
-        .doc(uid)
-        .collection('savings')
-        .doc('account')
+    // 1. Find the wallet first
+    final walletQuery = await FirebaseFirestore.instance
+        .collection('wallets')
+        .where('userId', isEqualTo: uid)
+        .limit(1)
         .get();
-    final currentWeight = (savingsDoc.data()?['totalWeightSaved'] ?? 0.0 as num)
-        .toDouble();
+    if (walletQuery.docs.isEmpty) throw Exception('Wallet not found');
+    final walletId = walletQuery.docs.first.id;
+    final userRef = await _getUserDocRef(uid);
 
-    if (currentWeight < weightToSell) {
-      throw Exception('Insufficient gold weight in your savings.');
-    }
+    await FirebaseFirestore.instance.runTransaction((transaction) async {
+      // 2. Check if user has enough saved gold weight
+      final savingsRef = userRef.collection('savings').doc('account');
+      final savingsDoc = await transaction.get(savingsRef);
+      final currentWeight = ((savingsDoc.data() as Map<String, dynamic>?)?['totalWeightSaved'] ?? 0.0 as num).toDouble();
 
-    // 2. Calculate cash returned
-    final amountInTHB = weightToSell * currentSellPricePerBaht;
+      if (currentWeight < weightToSell) {
+        throw Exception('Insufficient gold weight in your savings.');
+      }
+
+      // 3. Process wallet transaction (adds cash back)
+      final amountInTHB = weightToSell * currentSellPricePerBaht;
+      await _walletService.performTransactionWithTx(
+        transaction: transaction,
+        walletId: walletId,
+        amount: amountInTHB,
+        type: WalletTransactionType.sale, // Sale of gold from savings
+        description: 'Gold Savings Withdrawal',
+      );
+
+      // 4. Update the aggregate savings account
+      double proportionSold = weightToSell / currentWeight;
+      double currentInvested = ((savingsDoc.data() as Map<String, dynamic>?)?['totalAmountInvested'] ?? 0.0 as num).toDouble();
+      double investedToDeduct = proportionSold * currentInvested;
+
+      transaction.set(savingsRef, {
+        'totalWeightSaved': FieldValue.increment(-weightToSell),
+        'totalAmountInvested': FieldValue.increment(-investedToDeduct),
+        'lastUpdated': FieldValue.serverTimestamp(),
+      }, SetOptions(merge: true));
+
+      // 5. Create the transaction record
+      final txId = DateTime.now().millisecondsSinceEpoch.toString();
+      final stxRef = savingsRef.collection('transactions').doc('stx_$txId');
+      final stx = GoldSavingsTransaction(
+        id: txId,
+        amountInvested: -amountInTHB,
+        weightGained: -weightToSell,
+        buyPriceAtTransaction: currentSellPricePerBaht,
+        timestamp: DateTime.now(),
+      );
+      transaction.set(stxRef, stx.toMap());
+
+      // 6. Add global transaction record
+      final formatter = NumberFormat('#,##0.00');
+      final globalTxDoc = {
+        'assetId': 'savings',
+        'type': TransactionType.savings_withdraw.name,
+        'amount': amountInTHB.abs(),
+        'weight': weightToSell,
+        'timestamp': FieldValue.serverTimestamp(),
+        'details': 'SAVINGS: Sold ${weightToSell.toStringAsFixed(4)} Baht',
+        'userId': uid,
+        'userEmail': FirebaseAuth.instance.currentUser?.email ?? 'Unknown Email',
+      };
+      
+      final globalTransactionsRef = FirebaseFirestore.instance
+          .collection('transactions')
+          .doc('t$txId');
+      transaction.set(globalTransactionsRef, globalTxDoc);
+
+      // 7. Add a notification
+      final notifId = DateTime.now().millisecondsSinceEpoch.toString();
+      final notifRef = userRef.collection('notifications').doc('n_$notifId');
+      final notif = NotificationItem(
+        id: notifId,
+        title: 'Gold Savings Sold',
+        message:
+            'Successfully sold ${weightToSell.toStringAsFixed(4)} Baht of saved gold. You received ฿${formatter.format(amountInTHB)} back into your wallet.',
+        type: 'savings',
+        timestamp: DateTime.now(),
+        isRead: false,
+      );
+      transaction.set(notifRef, notif.toMap());
+    });
+  }
+
+  bool _pawnsRepaired = false;
+  Future<void> _repairPawnData() async {
+    if (_pawnsRepaired) return;
+    _pawnsRepaired = true;
+
+    final query = await FirebaseFirestore.instance
+        .collection('transactions')
+        .where('type', isEqualTo: 'pawn')
+        .get();
+
+    if (query.docs.isEmpty) return;
 
     final batch = FirebaseFirestore.instance.batch();
+    for (var txDoc in query.docs) {
+      final data = txDoc.data();
+      final uid = data['userId'];
+      final txId = txDoc.id.replaceAll(RegExp(r'[^0-9]'), '');
+      
+      if (uid == null) continue;
 
-    // 3. Add THB back to wallet
-    final userRef = FirebaseFirestore.instance.collection('users').doc(uid);
-    batch.update(userRef, {'walletBalance': FieldValue.increment(amountInTHB)});
+      final assetRef = FirebaseFirestore.instance
+          .collection('users')
+          .doc(uid)
+          .collection('assets')
+          .doc('a$txId');
 
-    // 4. Update the aggregate savings account (deduct weight, and optionally adjust total invested)
-    // We adjust total amount invested proportionally down
-    double proportionSold = weightToSell / currentWeight;
-    double currentInvested =
-        (savingsDoc.data()?['totalAmountInvested'] ?? 0.0 as num).toDouble();
-    double investedToDeduct = proportionSold * currentInvested;
-
-    final savingsRef = userRef.collection('savings').doc('account');
-    batch.set(savingsRef, {
-      'totalWeightSaved': FieldValue.increment(-weightToSell),
-      'totalAmountInvested': FieldValue.increment(-investedToDeduct),
-      'lastUpdated': FieldValue.serverTimestamp(),
-    }, SetOptions(merge: true));
-
-    // 5. Create the transaction record
-    final txId = DateTime.now().millisecondsSinceEpoch.toString();
-    final txRef = savingsRef.collection('transactions').doc('stx_$txId');
-
-    // We can reuse the same model, but we make amountInvested negative to indicate cash returned
-    final stx = GoldSavingsTransaction(
-      id: txId,
-      amountInvested: -amountInTHB,
-      weightGained: -weightToSell,
-      buyPriceAtTransaction:
-          currentSellPricePerBaht, // Store the price they sold at
-      timestamp: DateTime.now(),
-    );
-    batch.set(txRef, stx.toMap());
-
-    // 6. Add global transaction record
-    final amountAbs = amountInTHB.abs();
-    final formatter = NumberFormat('#,##0.00');
-    final globalTxDoc = {
-      'assetId': 'savings',
-      'type':
-          TransactionType.savings_withdraw.name, // Log specific Savings type
-      'amount': amountAbs,
-      'weight': weightToSell,
-      'timestamp': FieldValue.serverTimestamp(),
-      'details': 'SAVINGS: Sold ${weightToSell.toStringAsFixed(4)} Baht',
-      'userId': uid,
-      'userEmail': FirebaseAuth.instance.currentUser?.email ?? 'Unknown Email',
-    };
-
-    final userTxRef = userRef.collection('transactions').doc('t$txId');
-    batch.set(userTxRef, globalTxDoc);
-
-    final globalTransactionsRef = FirebaseFirestore.instance
-        .collection('transactions')
-        .doc('t$txId');
-    batch.set(globalTransactionsRef, globalTxDoc);
-
-    // 7. Add a notification
-    final notifId = DateTime.now().millisecondsSinceEpoch.toString();
-    final notifRef = userRef.collection('notifications').doc('n_$notifId');
-    final notif = NotificationItem(
-      id: notifId,
-      title: 'Gold Savings Sold',
-      message:
-          'Successfully sold ${weightToSell.toStringAsFixed(4)} Baht of saved gold. You received ฿${formatter.format(amountInTHB)} back into your wallet.',
-      type: 'savings',
-      timestamp: DateTime.now(),
-      isRead: false,
-    );
-    batch.set(notifRef, notif.toMap());
-
+      // Check if already exists
+      final assetDoc = await assetRef.get();
+      if (!assetDoc.exists) {
+        final timestamp = (data['timestamp'] as Timestamp?) ?? Timestamp.now();
+        // Create a fake pawn asset from the transaction
+        batch.set(assetRef, {
+          'name': data['details']?.toString().split(':').last.trim() ?? 'Pawned Item',
+          'weight': (data['weight'] as num?)?.toDouble() ?? 1.0,
+          'category': 'General',
+          'acquisitionDate': timestamp,
+          'acquisitionPrice': (data['amount'] as num?)?.toDouble() ?? 0.0,
+          'status': 'pawned',
+          'loanAmount': (data['amount'] as num?)?.toDouble() ?? 0.0,
+          'pawnDate': timestamp,
+          'dueDate': Timestamp.fromDate(timestamp.toDate().add(const Duration(days: 30))),
+        });
+      }
+    }
     await batch.commit();
   }
 }

@@ -12,6 +12,7 @@ import '02_page_trading.dart';
 import '16_page_notifications.dart';
 import '../models/notification_item.dart';
 import '20_page_gold_savings.dart';
+import '09_page_buy_selection.dart';
 
 class HomePage extends StatefulWidget {
   // Make the page is interactive
@@ -41,32 +42,32 @@ class _HomePageState extends State<HomePage> {
   Widget build(BuildContext context) {
     final menuItems = [
       {
-        'title': 'Catalog\nสินค้าทองรูปพรรณ',
-        'icon': Icons.grid_view_rounded,
-        'page': const CatalogPage(),
+        'title': 'Buy Gold from Store\nซื้อทองจากร้าน',
+        'icon': Icons.shopping_bag_outlined,
+        'page': const BuySelectionPage(),
         'color': const Color(0xFFE3F2FD),
         'iconColor': const Color(0xFF1976D2),
       },
       {
-        'title': 'Buy / Sell\nซื้อ-ขายแท่ง',
-        'icon': Icons.currency_exchange,
-        'page': const TradingPage(initialTabIndex: 0),
+        'title': 'Sell Gold to Store\nขายทองคืนร้าน',
+        'icon': Icons.sell_outlined,
+        'page': const TradingPage(initialTabIndex: 1),
         'color': const Color(0xFFE8F5E9),
         'iconColor': const Color(0xFF388E3C),
       },
       {
-        'title': 'Pawn / Redeem\nจำนำ-ไถ่ถอน',
-        'icon': Icons.account_balance,
+        'title': 'Pawn Gold with Store\nจำนำทองกับร้าน',
+        'icon': Icons.account_balance_outlined,
         'page': const TradingPage(initialTabIndex: 2),
         'color': const Color(0xFFFFF3E0),
         'iconColor': const Color(0xFFF57C00),
       },
       {
-        'title': 'Gold Savings\nออมทอง',
+        'title': 'Save Gold with Store\nออมทองกับร้าน',
         'icon': Icons.savings_outlined,
         'page': const GoldSavingsPage(),
-        'color': const Color(0xFFF3E5F5), // Light Purple
-        'iconColor': const Color(0xFF8E24AA), // Deep Purple
+        'color': const Color(0xFFF3E5F5),
+        'iconColor': const Color(0xFF8E24AA),
       },
     ];
 

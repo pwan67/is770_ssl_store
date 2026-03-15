@@ -225,7 +225,7 @@ class _BuyTabState extends State<_BuyTab> {
                   else if (_weight == 10.0) productId = 'p_bar_10';
 
                   await widget.service.createTransaction(
-                    assetName: productId != null ? 'Gold Bar ($_weight Baht)' : 'Gold Bar (New)',
+                    assetName: 'Gold Bar ($_weight Baht)',
                     weight: _weight,
                     amount: total,
                     type: TransactionType.buy,
