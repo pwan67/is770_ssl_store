@@ -1274,10 +1274,9 @@ class MockService {
       throw Exception('This time slot has reached maximum capacity.');
     }
 
-    // 1. Create Appointment Document
-    final id = DateTime.now().millisecondsSinceEpoch.toString();
+    final aptId = await _idGeneratorService.generateId('appointments');
     final appointment = Appointment(
-      id: id,
+      id: aptId,
       userId: uid,
       assetId: asset.id,
       assetName: asset.name,
@@ -1285,17 +1284,18 @@ class MockService {
       status: 'scheduled',
     );
 
-    await FirebaseFirestore.instance
-        .collection('appointments')
-        .doc('apt$id')
-        .set(appointment.toMap());
+    // Use transactional update for data integrity
+    await FirebaseFirestore.instance.runTransaction((transaction) async {
+      // 1. Create Appointment document
+      final aptRef =
+          FirebaseFirestore.instance.collection('appointments').doc(aptId);
+      transaction.set(aptRef, appointment.toMap());
 
-    // 2. Update Asset Status to 'pickup_scheduled'
-    final userRef = await _getUserDocRef(uid);
-    await userRef
-        .collection('assets')
-        .doc(asset.id)
-        .update({'status': 'pickup_scheduled'});
+      // 2. Update Asset Status to 'pickup_scheduled'
+      final userRef = await _getUserDocRef(uid);
+      final assetRef = userRef.collection('assets').doc(asset.id);
+      transaction.update(assetRef, {'status': 'pickup_scheduled'});
+    });
   }
 
   Future<void> updateAppointment(String appointmentId, DateTime newDate) async {
@@ -1400,11 +1400,9 @@ class MockService {
   Future<void> seedDummyProducts() async {
     final firestore = FirebaseFirestore.instance;
     final productsRef = firestore.collection('products');
-    final batch = firestore.batch();
 
     final dummyProducts = [
       {
-        'id': 'p1',
         'name': 'Classic Gold Chain',
         'description':
             'A timeless 96.5% pure gold necklace suitable for everyday wear. Features a durable hook clasp.',
@@ -1418,7 +1416,6 @@ class MockService {
         'category': 'Necklace',
       },
       {
-        'id': 'p2',
         'name': 'Dragon Carved Ring',
         'description':
             'Intricately designed gold ring featuring a traditional dragon motif. Perfect for special occasions.',
@@ -1432,7 +1429,6 @@ class MockService {
         'category': 'Ring',
       },
       {
-        'id': 'p3',
         'name': 'Simple Gold Bangle',
         'description':
             'Elegant solid gold bangle with a smooth polished finish.',
@@ -1446,7 +1442,6 @@ class MockService {
         'category': 'Bracelet',
       },
       {
-        'id': 'p4',
         'name': 'Lotus Stud Earrings',
         'description':
             'Delicate gold stud earrings shaped like blooming lotus flowers.',
@@ -1460,7 +1455,6 @@ class MockService {
         'category': 'Earrings',
       },
       {
-        'id': 'p5',
         'name': 'Ruby Embedded Ring',
         'description':
             'Premium gold ring featuring a small, high-quality ruby centerpiece.',
@@ -1474,7 +1468,6 @@ class MockService {
         'category': 'Ring',
       },
       {
-        'id': 'p_bar_025',
         'name': 'Gold Bar 0.25 Baht',
         'description': 'Standard 96.5% Gold Bar, weighing 0.25 Baht.',
         'price': 10000.0,
@@ -1482,11 +1475,11 @@ class MockService {
         'laborFee': 0.0,
         'costBasis': 9000.0,
         'stock': 50,
-        'imageUrl': 'https://via.placeholder.com/150x150/FFD700/000000?text=Bar+0.25',
+        'imageUrl':
+            'https://via.placeholder.com/150x150/FFD700/000000?text=Bar+0.25',
         'category': 'Gold Bar',
       },
       {
-        'id': 'p_bar_05',
         'name': 'Gold Bar 0.5 Baht',
         'description': 'Standard 96.5% Gold Bar, weighing 0.5 Baht.',
         'price': 20000.0,
@@ -1494,60 +1487,64 @@ class MockService {
         'laborFee': 0.0,
         'costBasis': 18000.0,
         'stock': 40,
-        'imageUrl': 'https://via.placeholder.com/150x150/FFD700/000000?text=Bar+0.5',
+        'imageUrl':
+            'https://via.placeholder.com/150x150/FFD700/000000?text=Bar+0.5',
         'category': 'Gold Bar',
       },
       {
-        'id': 'p_bar_1',
         'name': 'Gold Bar 1 Baht',
         'description': 'Standard 96.5% Gold Bar, weighing 1.0 Baht.',
         'price': 40000.0,
         'weight': 1.0,
         'laborFee': 0.0,
+        'costBasis': 38000.0,
         'stock': 30,
         'imageUrl': 'https://via.placeholder.com/150x150/FFD700/000000?text=Bar+1',
         'category': 'Gold Bar',
       },
       {
-        'id': 'p_bar_2',
         'name': 'Gold Bar 2 Baht',
         'description': 'Standard 96.5% Gold Bar, weighing 2.0 Baht.',
         'price': 80000.0,
         'weight': 2.0,
         'laborFee': 0.0,
+        'costBasis': 76000.0,
         'stock': 20,
         'imageUrl': 'https://via.placeholder.com/150x150/FFD700/000000?text=Bar+2',
         'category': 'Gold Bar',
       },
       {
-        'id': 'p_bar_5',
         'name': 'Gold Bar 5 Baht',
         'description': 'Standard 96.5% Gold Bar, weighing 5.0 Baht.',
         'price': 200000.0,
         'weight': 5.0,
         'laborFee': 0.0,
+        'costBasis': 190000.0,
         'stock': 10,
         'imageUrl': 'https://via.placeholder.com/150x150/FFD700/000000?text=Bar+5',
         'category': 'Gold Bar',
       },
       {
-        'id': 'p_bar_10',
         'name': 'Gold Bar 10 Baht',
         'description': 'Standard 96.5% Gold Bar, weighing 10.0 Baht.',
         'price': 400000.0,
         'weight': 10.0,
         'laborFee': 0.0,
+        'costBasis': 380000.0,
         'stock': 5,
-        'imageUrl': 'https://via.placeholder.com/150x150/FFD700/000000?text=Bar+10',
+        'imageUrl':
+            'https://via.placeholder.com/150x150/FFD700/000000?text=Bar+10',
         'category': 'Gold Bar',
       },
     ];
 
-    for (var p in dummyProducts) {
-      batch.set(productsRef.doc(p['id'].toString()), p);
+    for (var prod in dummyProducts) {
+      final productId = await _idGeneratorService.generateId('products');
+      await productsRef.doc(productId).set({
+        ...prod,
+        'id': productId,
+      });
     }
-
-    await batch.commit();
   }
 
   // Search and Filter helper (to be used locally on the streamed list)

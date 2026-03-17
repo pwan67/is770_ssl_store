@@ -14,6 +14,8 @@ class IdGeneratorService {
     'transactions': 'TXN',
     'promotions': 'PRM',
     'appointments': 'APT',
+    'assets': 'AST',
+    'notifications': 'NTF',
   };
 
   /// Generates a sequential ID formatted according to best practices.
@@ -24,54 +26,48 @@ class IdGeneratorService {
     int padding = 4,
     String separator = '-',
   }) async {
-    // Determine the prefix: use override, then map, then default to first 3 letters
+    // Determine the prefix
     String prefix = prefixOverride ?? 
                     _prefixMap[collectionName] ?? 
                     collectionName.substring(0, 3).toUpperCase();
 
-    print('DEBUG: Starting ID generation for $collectionName with prefix: $prefix');
-    // Use a specific counter for this collection to maintain sequence
-    final counterName = '${collectionName}_counter';
-    final counterRef = _firestore.collection('metadata').doc('counters');
+    // Use a dedicated document per collection to avoid write bottlenecks
+    final counterRef = _firestore
+        .collection('metadata')
+        .doc('counters')
+        .collection('collections')
+        .doc(collectionName);
 
     return await _firestore.runTransaction((transaction) async {
       final snapshot = await transaction.get(counterRef);
 
       int currentSequence = 0;
       if (snapshot.exists && snapshot.data() != null) {
-        currentSequence = (snapshot.data()![counterName] ?? 0) as int;
+        currentSequence = (snapshot.data()?['current'] ?? 0) as int;
       }
-      print('DEBUG: Current sequence for $collectionName is $currentSequence');
 
       final nextSequence = currentSequence + 1;
 
-      // Update the counter transactionally
+      // Update the counter document for this specific collection
       transaction.set(
         counterRef,
-        {counterName: nextSequence},
+        {'current': nextSequence, 'updatedAt': FieldValue.serverTimestamp()},
         SetOptions(merge: true),
       );
 
-      // Format the ID: e.g., RCT-0001
-      print('DEBUG: Generated next ID for $collectionName: $prefix$separator${nextSequence.toString().padLeft(padding, '0')}');
       return '$prefix$separator${nextSequence.toString().padLeft(padding, '0')}';
     });
   }
 
   /// Manually repairs/syncs the counter based on current collection size.
-  /// Useful if records were created before sequential IDs were implemented.
   Future<void> repairCounter(String collectionName) async {
-    print('Starting repair for collection: $collectionName');
     final snapshot = await _firestore.collection(collectionName).get();
     int currentCount = snapshot.docs.length;
     
-    // Also try to find the highest existing sequential ID to avoid collisions
     int maxSequential = 0;
-    final prefix = _prefixMap[collectionName] ?? collectionName.substring(0, 3).toUpperCase();
     
     for (var doc in snapshot.docs) {
       final id = doc.id;
-      // Regex to find ANY sequential ID pattern: PREFIX-NUMBER
       final match = RegExp(r'^([A-Z]+)-(\d+)$').firstMatch(id);
       if (match != null) {
         final numPart = int.tryParse(match.group(2)!);
@@ -81,16 +77,16 @@ class IdGeneratorService {
       }
     }
 
-    // Use the higher of total docs or highest sequential ID found
     final finalCounterValue = maxSequential > currentCount ? maxSequential : currentCount;
     
-    print('Repair Findings for $collectionName: Total Docs=$currentCount, Max Sequential=$maxSequential. Setting counter to: $finalCounterValue');
-
-    final counterName = '${collectionName}_counter';
-    final counterRef = _firestore.collection('metadata').doc('counters');
+    final counterRef = _firestore
+        .collection('metadata')
+        .doc('counters')
+        .collection('collections')
+        .doc(collectionName);
     
     await counterRef.set(
-      {counterName: finalCounterValue},
+      {'current': finalCounterValue, 'updatedAt': FieldValue.serverTimestamp()},
       SetOptions(merge: true),
     );
   }
