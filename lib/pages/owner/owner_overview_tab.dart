@@ -181,18 +181,18 @@ class _OwnerOverviewTabState extends State<OwnerOverviewTab> {
         ),
         const SizedBox(height: 12),
         SizedBox(
-          height: 130,
+          height: 120, // Slightly reduced height for 3-card row
           child: Row(
             children: [
               Expanded(
                 child: _MetricCard(
-                  title: 'Total Profit',
+                  title: 'Profit',
                   icon: Icons.trending_up,
                   color: const Color(0xFF2E7D32),
                   isHero: true,
                   stream: FirebaseFirestore.instance
                       .collection('transactions')
-                      .where('type', isEqualTo: 'buy')
+                      .where('type', whereIn: ['buy', 'redeem'])
                       .snapshots()
                       .map((snap) {
                     double total = 0.0;
@@ -211,10 +211,10 @@ class _OwnerOverviewTabState extends State<OwnerOverviewTab> {
                   }),
                 ),
               ),
-              const SizedBox(width: 16),
+              const SizedBox(width: 12),
               Expanded(
                 child: _MetricCard(
-                  title: 'Total Revenue',
+                  title: 'Revenue',
                   icon: Icons.monetization_on,
                   color: const Color(0xFF1A237E),
                   isHero: true,
@@ -226,7 +226,41 @@ class _OwnerOverviewTabState extends State<OwnerOverviewTab> {
                   ),
                   stream: FirebaseFirestore.instance
                       .collection('transactions')
-                      .where('type', isEqualTo: 'buy')
+                      .where('type', whereIn: ['buy', 'redeem'])
+                      .snapshots()
+                      .map((snap) {
+                    double total = 0.0;
+                    for (var doc in snap.docs) {
+                      final data = doc.data();
+                      final type = data['type'] as String?;
+                      final timestamp = (data['timestamp'] as Timestamp?)?.toDate();
+                      if (_selectedDateRange != null && timestamp != null) {
+                        if (timestamp.isBefore(_selectedDateRange!.start) ||
+                            timestamp.isAfter(_selectedDateRange!.end)) {
+                          continue;
+                        }
+                      }
+                      
+                      if (type == 'buy') {
+                        total += (data['amount'] as num?)?.toDouble() ?? 0.0;
+                      } else if (type == 'redeem') {
+                        total += (data['profit'] as num?)?.toDouble() ?? 0.0;
+                      }
+                    }
+                    return _formatCurrency(total);
+                  }),
+                ),
+              ),
+              const SizedBox(width: 12),
+              Expanded(
+                child: _MetricCard(
+                  title: 'Cost',
+                  icon: Icons.payments,
+                  color: const Color(0xFFC62828),
+                  isHero: true,
+                  stream: FirebaseFirestore.instance
+                      .collection('transactions')
+                      .where('type', whereIn: ['buy', 'redeem'])
                       .snapshots()
                       .map((snap) {
                     double total = 0.0;
@@ -239,7 +273,7 @@ class _OwnerOverviewTabState extends State<OwnerOverviewTab> {
                           continue;
                         }
                       }
-                      total += (data['amount'] as num?)?.toDouble() ?? 0.0;
+                      total += (data['cost'] as num?)?.toDouble() ?? 0.0;
                     }
                     return _formatCurrency(total);
                   }),
@@ -249,40 +283,6 @@ class _OwnerOverviewTabState extends State<OwnerOverviewTab> {
           ),
         ),
         const SizedBox(height: 16),
-        GridView.count(
-          crossAxisCount: 2,
-          shrinkWrap: true,
-          physics: const NeverScrollableScrollPhysics(),
-          crossAxisSpacing: 16,
-          mainAxisSpacing: 16,
-          childAspectRatio: 1.7,
-          children: [
-            _MetricCard(
-              title: 'Total Cost (COGS)',
-              icon: Icons.payments,
-              color: const Color(0xFFC62828),
-              stream: FirebaseFirestore.instance
-                  .collection('transactions')
-                  .where('type', isEqualTo: 'buy')
-                  .snapshots()
-                  .map((snap) {
-                double total = 0.0;
-                for (var doc in snap.docs) {
-                  final data = doc.data();
-                  final timestamp = (data['timestamp'] as Timestamp?)?.toDate();
-                  if (_selectedDateRange != null && timestamp != null) {
-                    if (timestamp.isBefore(_selectedDateRange!.start) ||
-                        timestamp.isAfter(_selectedDateRange!.end)) {
-                      continue;
-                    }
-                  }
-                  total += (data['cost'] as num?)?.toDouble() ?? 0.0;
-                }
-                return _formatCurrency(total);
-              }),
-            ),
-          ],
-        ),
 
         // --- TRANSACTION ACTIVITY ---
         const SizedBox(height: 32),
@@ -405,14 +405,17 @@ class _OwnerOverviewTabState extends State<OwnerOverviewTab> {
                   .snapshots()
                   .asyncMap((rateDoc) async {
                 final data = rateDoc.data();
-                final marketRate = (data?['sellPrice'] as num?)?.toDouble() ?? 42000.0;
+                final sellRate = (data?['sellPrice'] as num?)?.toDouble() ?? 42000.0;
                 final productSnap = await FirebaseFirestore.instance.collection('products').get();
                 double totalValue = 0.0;
                 for (var doc in productSnap.docs) {
                   final pData = doc.data();
                   final stock = (pData['stock'] as num?)?.toInt() ?? 0;
                   final weight = (pData['weight'] as num?)?.toDouble() ?? 0.0;
-                  totalValue += stock * weight * marketRate * 0.7;
+                  final laborFee = (pData['laborFee'] as num?)?.toDouble() ?? 0.0;
+                  
+                  // Retail Value = (Weight * Sell Rate) + Labor Fee (per unit)
+                  totalValue += stock * ((weight * sellRate) + laborFee);
                 }
                 return _formatCurrency(totalValue);
               }),
@@ -425,16 +428,20 @@ class _OwnerOverviewTabState extends State<OwnerOverviewTab> {
                 context,
                 MaterialPageRoute(builder: (_) => const OwnerInventoryCostPage()),
               ),
-              stream: FirebaseFirestore.instance
-                  .collection('transactions')
-                  .where('type', isEqualTo: 'restock')
+               stream: FirebaseFirestore.instance
+                  .collection('products')
                   .snapshots()
-                  .map((snap) {
-                double total = 0.0;
-                for (var doc in snap.docs) {
-                  total += (doc.data()['amount'] as num?)?.toDouble() ?? 0.0;
+                  .map((productSnap) {
+                double totalInvestment = 0.0;
+                for (var doc in productSnap.docs) {
+                  final pData = doc.data();
+                  final stock = (pData['stock'] as num?)?.toInt() ?? 0;
+                  final costBasis = (pData['costBasis'] as num?)?.toDouble() ?? 0.0;
+                  
+                  // Stable Historical Investment = Stock * Cost Basis
+                  totalInvestment += stock * costBasis;
                 }
-                return _formatCurrency(total);
+                return _formatCurrency(totalInvestment);
               }),
             ),
             _MetricCard(
@@ -447,6 +454,7 @@ class _OwnerOverviewTabState extends State<OwnerOverviewTab> {
               ),
               stream: FirebaseFirestore.instance
                   .collection('products')
+                  .where('stock', isGreaterThan: 0)
                   .snapshots()
                   .map((snap) => snap.docs.length.toString()),
             ),
@@ -591,7 +599,23 @@ class _OwnerOverviewTabState extends State<OwnerOverviewTab> {
                   maxLines: 1,
                   overflow: TextOverflow.ellipsis,
                 ),
-                subtitle: Text(email, style: const TextStyle(fontSize: 12)),
+                subtitle: Row(
+                  children: [
+                    Text(email, style: const TextStyle(fontSize: 12)),
+                    const SizedBox(width: 8),
+                    Container(
+                      padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 1),
+                      decoration: BoxDecoration(
+                        color: Colors.grey[200],
+                        borderRadius: BorderRadius.circular(4),
+                      ),
+                      child: Text(
+                        (data['purity'] as num?)?.toDouble() == 0.9999 ? '99.99%' : '96.5%',
+                        style: const TextStyle(fontSize: 10, fontWeight: FontWeight.bold),
+                      ),
+                    ),
+                  ],
+                ),
                 trailing: Text(
                   '฿${formatter.format(amount)}',
                   style: TextStyle(

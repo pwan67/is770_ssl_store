@@ -10,6 +10,8 @@ class GoldAsset {
   final DateTime? pawnDate;
   final DateTime? dueDate;
   final double? interestRate;
+  final double purity; // 0.965 or 0.9999
+
 
   GoldAsset({
     required this.id,
@@ -23,7 +25,26 @@ class GoldAsset {
     this.pawnDate,
     this.dueDate,
     this.interestRate,
+    this.purity = 0.965,
   });
+
+  // Calculate accrued interest (1.25% per month industry standard)
+  double get accruedInterest {
+    if (status != 'pawned' || loanAmount == null || pawnDate == null) return 0.0;
+    
+    final daysElapsed = DateTime.now().difference(pawnDate!).inDays;
+    if (daysElapsed <= 0) return 0.0;
+
+    // Monthly rate 1.25% -> Daily rate approximately 0.0125 / 30
+    final monthlyRate = interestRate ?? 0.0125;
+    final dailyRate = monthlyRate / 30;
+    
+    return loanAmount! * dailyRate * daysElapsed;
+  }
+
+  double get totalRedemptionAmount {
+    return (loanAmount ?? 0.0) + accruedInterest;
+  }
 
   GoldAsset copyWith({
     String? status,
@@ -45,6 +66,7 @@ class GoldAsset {
       pawnDate: clearLoan ? null : (pawnDate ?? this.pawnDate),
       dueDate: clearLoan ? null : (dueDate ?? this.dueDate),
       interestRate: clearLoan ? null : (interestRate ?? this.interestRate),
+      purity: purity, // Purity doesn't usually change for an asset
     );
   }
 }

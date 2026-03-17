@@ -15,17 +15,22 @@ class _OwnerPickupsTabState extends State<OwnerPickupsTab> {
 
   Future<void> _completePickup(Appointment apt) async {
     try {
-      await _service.completeAppointment(apt.id);
+      await _service.completeAppointment(
+        appointmentId: apt.id,
+        userId: apt.userId,
+        assetId: apt.assetId,
+        assetName: apt.assetName,
+      );
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Completed pickup for ${apt.assetName}')),
+          SnackBar(content: Text('Confirmed pickup for ${apt.assetName}')),
         );
       }
     } catch (e) {
       if (mounted) {
         ScaffoldMessenger.of(
           context,
-        ).showSnackBar(SnackBar(content: Text('Failed to complete: $e')));
+        ).showSnackBar(SnackBar(content: Text('Failed to confirm: $e')));
       }
     }
   }
@@ -34,9 +39,9 @@ class _OwnerPickupsTabState extends State<OwnerPickupsTab> {
     showDialog(
       context: context,
       builder: (context) => AlertDialog(
-        title: const Text('Mark Pickup as Completed?'),
+        title: const Text('Confirm Order Delivery?'),
         content: Text(
-          'Are you sure you want to mark ${apt.assetName} as picked up by the customer?',
+          'Are you sure you want to confirm that ${apt.assetName} has been handed over to the customer?',
         ),
         actions: [
           TextButton(
@@ -196,17 +201,40 @@ class _OwnerPickupsTabState extends State<OwnerPickupsTab> {
                               ],
                             ),
                           ),
-                          ElevatedButton.icon(
-                            icon: const Icon(Icons.check, size: 18),
-                            label: const Text('Complete'),
-                            style: ElevatedButton.styleFrom(
-                              backgroundColor: Colors.green,
-                              foregroundColor: Colors.white,
-                              shape: RoundedRectangleBorder(
-                                borderRadius: BorderRadius.circular(8),
-                              ),
-                            ),
-                            onPressed: () => _showCompleteDialog(apt),
+                          Builder(
+                            builder: (context) {
+                              final isFuture = dateKey.isAfter(today);
+                              
+                              if (isFuture) {
+                                return OutlinedButton.icon(
+                                  icon: const Icon(Icons.timer_outlined, size: 18),
+                                  label: const Text('Pending'),
+                                  style: OutlinedButton.styleFrom(
+                                    foregroundColor: Colors.grey[600],
+                                    side: BorderSide(color: Colors.grey[400]!),
+                                    shape: RoundedRectangleBorder(
+                                      borderRadius: BorderRadius.circular(8),
+                                    ),
+                                  ),
+                                  onPressed: () => ScaffoldMessenger.of(context).showSnackBar(
+                                    const SnackBar(content: Text('This pickup is scheduled for a future date.'))
+                                  ),
+                                );
+                              }
+
+                              return ElevatedButton.icon(
+                                icon: const Icon(Icons.delivery_dining, size: 18),
+                                label: const Text('Confirm Pickup'),
+                                style: ElevatedButton.styleFrom(
+                                  backgroundColor: Colors.green,
+                                  foregroundColor: Colors.white,
+                                  shape: RoundedRectangleBorder(
+                                    borderRadius: BorderRadius.circular(8),
+                                  ),
+                                ),
+                                onPressed: () => _showCompleteDialog(apt),
+                              );
+                            }
                           ),
                         ],
                       ),

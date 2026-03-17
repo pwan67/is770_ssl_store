@@ -280,9 +280,8 @@ class MockService {
 
     // Add a notification
     final notifId = DateTime.now().millisecondsSinceEpoch.toString();
-    final notifRef = FirebaseFirestore.instance
-        .collection('users')
-        .doc(uid)
+    final userRef = await _getUserDocRef(uid);
+    final notifRef = userRef
         .collection('notifications')
         .doc('n_$notifId');
     final formatter = NumberFormat('#,##0.00');
@@ -319,9 +318,8 @@ class MockService {
 
     // Add a notification
     final notifId = DateTime.now().millisecondsSinceEpoch.toString();
-    final notifRef = FirebaseFirestore.instance
-        .collection('users')
-        .doc(uid)
+    final userRef = await _getUserDocRef(uid);
+    final notifRef = userRef
         .collection('notifications')
         .doc('n_$notifId');
     final formatter = NumberFormat('#,##0.00');
@@ -424,6 +422,7 @@ class MockService {
               interestRate: data['interestRate'] != null
                   ? (data['interestRate'] as num).toDouble()
                   : null,
+              purity: (data['purity'] ?? 0.965 as num).toDouble(),
             );
           }).toList();
         });
@@ -461,6 +460,8 @@ class MockService {
               type: type,
               amount: (data['amount'] ?? 0 as num).toDouble(),
               weight: (data['weight'] ?? 0 as num).toDouble(),
+              purity: (data['purity'] ?? 0.965 as num).toDouble(),
+              laborFee: (data['laborFee'] as num?)?.toDouble(),
               timestamp:
                   (data['timestamp'] as Timestamp?)?.toDate() ?? DateTime.now(),
               details: data['details'] ?? '',
@@ -598,6 +599,38 @@ class MockService {
         .delete();
   }
 
+  // Self-healing data repair for products (costBasis recovery)
+  Future<void> repairProductsData() async {
+    final productsSnap = await FirebaseFirestore.instance.collection('products').get();
+    final batch = FirebaseFirestore.instance.batch();
+    bool neededRepair = false;
+
+    for (var doc in productsSnap.docs) {
+      final data = doc.data();
+      if (data['costBasis'] == null) {
+        double price = (data['price'] as num?)?.toDouble() ?? 0.0;
+        double weight = (data['weight'] as num?)?.toDouble() ?? 0.0;
+        double defaultCost;
+        
+        if (weight > 0 && price == 0) {
+           // Probably a bar, use weight * ~40k
+           defaultCost = weight * 40000.0;
+        } else {
+           // Jewelry or other, use 90% of price
+           defaultCost = price * 0.9;
+        }
+        
+        batch.update(doc.reference, {'costBasis': defaultCost});
+        neededRepair = true;
+      }
+    }
+
+    if (neededRepair) {
+      print('DEBUG: Repairing missing products costBasis...');
+      await batch.commit();
+    }
+  }
+
   Future<void> clearAllNotifications() async {
     final uid = currentUserId;
     if (uid == null) return;
@@ -622,6 +655,8 @@ class MockService {
     required TransactionType type,
     String? category,
     String? productId, // For simulated stock reduction
+    double purity = 0.965,
+    double? laborFee,
   }) async {
     // Repair existing data if needed (one-time for this session/demo)
     await _repairPawnData();
@@ -650,9 +685,25 @@ class MockService {
         final rateDoc = await transaction.get(
           FirebaseFirestore.instance.collection('market').doc('gold_rate'),
         );
-        final marketRate = (rateDoc.data() as Map<String, dynamic>?)?['sellPrice']?.toDouble() ?? 42000.0;
-        final totalCost = weight * marketRate * 0.7;
-        final calculatedProfit = amount - totalCost;
+        final sellRate = (rateDoc.data() as Map<String, dynamic>?)?['sellPrice']?.toDouble() ?? 42000.0;
+        final buyRate = (rateDoc.data() as Map<String, dynamic>?)?['buyPrice']?.toDouble() ?? 41000.0;
+        
+        double totalCost = 0.0;
+        double calculatedProfit = 0.0;
+
+        if (type == TransactionType.buy) {
+          // Store Selling to Customer
+          // Industry standard cost: GTA Buy Price (what it costs to replace/buy back)
+          totalCost = weight * buyRate;
+          calculatedProfit = amount - totalCost;
+        } else if (type == TransactionType.sell) {
+          // Store Buying from Customer
+          totalCost = amount;
+          calculatedProfit = 0.0; // Profit realized later upon resale
+        } else if (type == TransactionType.pawn) {
+          totalCost = amount; // Loan principal is a cost/outflow
+          calculatedProfit = 0.0;
+        }
 
         if (type == TransactionType.buy) {
           final walletQuery = await FirebaseFirestore.instance
@@ -706,6 +757,7 @@ class MockService {
             'acquisitionDate': FieldValue.serverTimestamp(),
             'acquisitionPrice': amount,
             'status': 'owned',
+            'purity': purity,
           };
           transaction.set(assetRef, assetDoc);
         } else if (type == TransactionType.pawn) {
@@ -725,6 +777,8 @@ class MockService {
             'loanAmount': amount,
             'pawnDate': FieldValue.serverTimestamp(),
             'dueDate': Timestamp.fromDate(DateTime.now().add(const Duration(days: 30))),
+            'purity': purity,
+            'interestRate': 0.0125, // 1.25% monthly
           };
           transaction.set(assetRef, assetDoc);
         }
@@ -739,6 +793,8 @@ class MockService {
           'details': '${type.name.toUpperCase()}: $assetName ($weight Baht)',
           'cost': totalCost,
           'profit': calculatedProfit,
+          'purity': purity,
+          'laborFee': laborFee,
           'userId': uid,
           'userEmail': FirebaseAuth.instance.currentUser?.email ?? 'Unknown Email',
         };
@@ -789,13 +845,24 @@ class MockService {
         
         if (!productDoc.exists) throw Exception('Product not found');
 
-        // 1. Update stock
+        // 1. Get current stock and cost basis for weighted average
+        final currentStock = (productDoc.data() as Map<String, dynamic>)['stock'] ?? 0;
+        final currentCostBasis = (productDoc.data() as Map<String, dynamic>)['costBasis']?.toDouble() ?? 0.0;
+        
+        // 2. Calculate New Weighted Average Cost
+        // Formula: ((ExistingStock * OldCost) + (NewQty * NewCost)) / NewTotalStock
+        final newTotalStock = currentStock + quantity;
+        final unitCost = totalCost / quantity;
+        final newCostBasis = ((currentStock * currentCostBasis) + (quantity * unitCost)) / newTotalStock;
+
+        // 3. Update stock and cost basis
         transaction.update(productRef, {
-          'stock': FieldValue.increment(quantity),
+          'stock': newTotalStock,
+          'costBasis': newCostBasis,
           'inStock': true,
         });
 
-        // 2. Create Restock Transaction Record (Global)
+        // 4. Create Restock Transaction Record (Global)
         final globalTxRef = FirebaseFirestore.instance
             .collection('transactions')
             .doc('t$id');
@@ -806,7 +873,7 @@ class MockService {
           'quantity': quantity,
           'productId': productId,
           'timestamp': FieldValue.serverTimestamp(),
-          'details': 'RESTOCK: $productName ($quantity units)',
+          'details': 'RESTOCK: $productName ($quantity units @ ฿${unitCost.toStringAsFixed(0)})',
           'userId': uid,
           'userEmail': FirebaseAuth.instance.currentUser?.email ?? 'Owner',
         };
@@ -867,6 +934,9 @@ class MockService {
           'weight': asset.weight,
           'timestamp': FieldValue.serverTimestamp(),
           'details': 'SELL: ${asset.name} (${asset.weight} Baht)',
+          'cost': sellPrice, // Store's outflow is the cost
+          'profit': 0.0,     // Realized later
+          'purity': asset.purity,
           'userId': uid,
           'userEmail': FirebaseAuth.instance.currentUser?.email ?? 'Unknown Email',
         };
@@ -1035,10 +1105,18 @@ class MockService {
         // 4. Create Redeem Transaction (Root)
         final id = await _idGeneratorService.generateId('transactions', prefixOverride: 'RED');
  
+        final principal = (assetDoc.data() as Map<String, dynamic>)['loanAmount']?.toDouble() ?? 0.0;
+        final interestPaid = totalOwed - principal;
+
         final transactionDoc = {
           'assetId': asset.id,
           'type': TransactionType.redeem.name,
           'amount': totalOwed, // Representing cash paid
+          'principal': principal,
+          'interestPaid': interestPaid,
+          'profit': interestPaid, // Redemption profit is the interest
+          'cost': 0.0,            // No additional cost to store upon redemption
+          'purity': asset.purity,
           'weight': asset.weight,
           'timestamp': FieldValue.serverTimestamp(),
           'details': 'REDEEM: ${asset.name} (${asset.weight} Baht)',
@@ -1213,9 +1291,8 @@ class MockService {
         .set(appointment.toMap());
 
     // 2. Update Asset Status to 'pickup_scheduled'
-    await FirebaseFirestore.instance
-        .collection('users')
-        .doc(uid)
+    final userRef = await _getUserDocRef(uid);
+    await userRef
         .collection('assets')
         .doc(asset.id)
         .update({'status': 'pickup_scheduled'});
@@ -1256,19 +1333,44 @@ class MockService {
         .collection('appointments')
         .doc(appointmentId)
         .delete();
-    await FirebaseFirestore.instance
-        .collection('users')
-        .doc(uid)
+    final userRef = await _getUserDocRef(uid);
+    await userRef
         .collection('assets')
         .doc(assetId)
         .update({'status': 'owned'});
   }
 
-  Future<void> completeAppointment(String appointmentId) async {
-    await FirebaseFirestore.instance
-        .collection('appointments')
-        .doc(appointmentId)
-        .update({'status': 'completed'});
+  Future<void> completeAppointment({
+    required String appointmentId,
+    required String userId,
+    required String assetId,
+    required String assetName,
+  }) async {
+    final userRef = await _getUserDocRef(userId);
+
+    await FirebaseFirestore.instance.runTransaction((transaction) async {
+      // 1. Update Appointment Status
+      final aptRef =
+          FirebaseFirestore.instance.collection('appointments').doc(appointmentId);
+      transaction.update(aptRef, {'status': 'completed'});
+
+      // 2. Update Asset Status to 'collected'
+      final assetRef = userRef.collection('assets').doc(assetId);
+      transaction.update(assetRef, {'status': 'collected'});
+
+      // 3. Send Notification to User
+      final notifId = DateTime.now().millisecondsSinceEpoch.toString();
+      final notifRef = userRef.collection('notifications').doc('n_$notifId');
+      final notif = NotificationItem(
+        id: notifId,
+        title: 'Pickup Successful',
+        message: 'You have successfully picked up your $assetName from the store.',
+        type: 'appointment',
+        timestamp: DateTime.now(),
+        isRead: false,
+      );
+      transaction.set(notifRef, notif.toMap());
+    });
   }
 
   // Live Cloud Products Stream
@@ -1285,6 +1387,7 @@ class MockService {
           price: (data['price'] ?? 0 as num).toDouble(),
           weight: (data['weight'] ?? 0 as num).toDouble(),
           laborFee: (data['laborFee'] ?? 0 as num).toDouble(),
+          costBasis: (data['costBasis'] ?? 0 as num).toDouble(),
           stock: data['stock'] ?? 0,
           imageUrl: data['imageUrl'] ?? '',
           category: data['category'] ?? 'General',
@@ -1308,6 +1411,7 @@ class MockService {
         'price': 42000.0,
         'weight': 1.0,
         'laborFee': 1200.0,
+        'costBasis': 40000.0,
         'stock': 15,
         'imageUrl':
             'https://somsrimanee.com/wp-content/uploads/2023/07/20240906-0370.jpg',
@@ -1321,6 +1425,7 @@ class MockService {
         'price': 21500.0,
         'weight': 0.5,
         'laborFee': 800.0,
+        'costBasis': 20000.0,
         'stock': 8,
         'imageUrl':
             'https://somsrimanee.com/wp-content/uploads/2023/07/20240906-0158.jpg',
@@ -1334,6 +1439,7 @@ class MockService {
         'price': 84500.0,
         'weight': 2.0,
         'laborFee': 1500.0,
+        'costBasis': 80000.0,
         'stock': 5,
         'imageUrl':
             'https://somsrimanee.com/wp-content/uploads/2023/07/20240906-0279-Edit.jpg',
@@ -1347,6 +1453,7 @@ class MockService {
         'price': 10800.0,
         'weight': 0.25,
         'laborFee': 600.0,
+        'costBasis': 9500.0,
         'stock': 20,
         'imageUrl':
             'https://somsrimanee.com/wp-content/uploads/2023/07/20240906-0209-Edit.jpg',
@@ -1360,6 +1467,7 @@ class MockService {
         'price': 25000.0,
         'weight': 0.5,
         'laborFee': 2500.0,
+        'costBasis': 22000.0,
         'stock': 3,
         'imageUrl':
             'https://somsrimanee.com/wp-content/uploads/2023/07/20240906-0164.jpg',
@@ -1372,6 +1480,7 @@ class MockService {
         'price': 10000.0,
         'weight': 0.25,
         'laborFee': 0.0,
+        'costBasis': 9000.0,
         'stock': 50,
         'imageUrl': 'https://via.placeholder.com/150x150/FFD700/000000?text=Bar+0.25',
         'category': 'Gold Bar',
@@ -1383,6 +1492,7 @@ class MockService {
         'price': 20000.0,
         'weight': 0.5,
         'laborFee': 0.0,
+        'costBasis': 18000.0,
         'stock': 40,
         'imageUrl': 'https://via.placeholder.com/150x150/FFD700/000000?text=Bar+0.5',
         'category': 'Gold Bar',
@@ -1690,48 +1800,131 @@ class MockService {
 
   bool _pawnsRepaired = false;
   Future<void> _repairPawnData() async {
+    await repairProductsData(); // Self-heal products first
     if (_pawnsRepaired) return;
     _pawnsRepaired = true;
 
+    // 1. Repair missing Assets from Pawn Transactions
     final query = await FirebaseFirestore.instance
         .collection('transactions')
         .where('type', isEqualTo: 'pawn')
         .get();
 
-    if (query.docs.isEmpty) return;
+    if (query.docs.isNotEmpty) {
+      final batch = FirebaseFirestore.instance.batch();
+      for (var txDoc in query.docs) {
+        final data = txDoc.data();
+        final uid = data['userId'];
+        final txId = txDoc.id.replaceAll(RegExp(r'[^0-9]'), '');
+        
+        if (uid == null) continue;
 
-    final batch = FirebaseFirestore.instance.batch();
-    for (var txDoc in query.docs) {
-      final data = txDoc.data();
-      final uid = data['userId'];
-      final txId = txDoc.id.replaceAll(RegExp(r'[^0-9]'), '');
+        final userRef = await _getUserDocRef(uid);
+        final assetRef = userRef
+            .collection('assets')
+            .doc('a$txId');
+
+        final assetDoc = await assetRef.get();
+        if (!assetDoc.exists) {
+          final timestamp = (data['timestamp'] as Timestamp?) ?? Timestamp.now();
+          batch.set(assetRef, {
+            'name': data['details']?.toString().split(':').last.trim() ?? 'Pawned Item',
+            'weight': (data['weight'] as num?)?.toDouble() ?? 1.0,
+            'category': 'General',
+            'acquisitionDate': timestamp,
+            'acquisitionPrice': (data['amount'] as num?)?.toDouble() ?? 0.0,
+            'status': 'pawned',
+            'loanAmount': (data['amount'] as num?)?.toDouble() ?? 0.0,
+            'pawnDate': timestamp,
+            'dueDate': Timestamp.fromDate(timestamp.toDate().add(const Duration(days: 30))),
+          });
+        }
+      }
+      await batch.commit();
+    }
+
+    // 2. Repair missing Profit/Cost fields in Buy Transactions
+    await repairAllTransactions();
+  }
+
+  Future<void> repairAllTransactions() async {
+    final rateDoc = await FirebaseFirestore.instance.collection('market').doc('gold_rate').get();
+    final buyRate = (rateDoc.data()?['buyPrice'] as num?)?.toDouble() ?? 41000.0;
+
+    final buyTxQuery = await FirebaseFirestore.instance
+        .collection('transactions')
+        .where('type', isEqualTo: 'buy')
+        .get();
+
+    var batch = FirebaseFirestore.instance.batch();
+    bool needsCommit = false;
+
+    for (var doc in buyTxQuery.docs) {
+      final data = doc.data();
+      final amount = (data['amount'] as num?)?.toDouble() ?? 0.0;
+      final cost = (data['cost'] as num?)?.toDouble();
+      final profit = (data['profit'] as num?)?.toDouble();
       
-      if (uid == null) continue;
+      // If data is missing or mathematically inconsistent (Cost + Profit != Amount)
+      if (cost == null || profit == null || (amount - (cost + profit)).abs() > 1.0) {
+        double weight = (data['weight'] as num?)?.toDouble() ?? 0.0;
+        
+        // If weight is missing, estimate it from amount using market rate (reversed)
+        if (weight <= 0 && amount > 0) {
+          weight = amount / (buyRate * 1.04); // Estimate weight assuming 4% margin
+        }
+        
+        final newCost = weight * buyRate;
+        final newProfit = amount - newCost;
 
-      final assetRef = FirebaseFirestore.instance
-          .collection('users')
-          .doc(uid)
-          .collection('assets')
-          .doc('a$txId');
-
-      // Check if already exists
-      final assetDoc = await assetRef.get();
-      if (!assetDoc.exists) {
-        final timestamp = (data['timestamp'] as Timestamp?) ?? Timestamp.now();
-        // Create a fake pawn asset from the transaction
-        batch.set(assetRef, {
-          'name': data['details']?.toString().split(':').last.trim() ?? 'Pawned Item',
-          'weight': (data['weight'] as num?)?.toDouble() ?? 1.0,
-          'category': 'General',
-          'acquisitionDate': timestamp,
-          'acquisitionPrice': (data['amount'] as num?)?.toDouble() ?? 0.0,
-          'status': 'pawned',
-          'loanAmount': (data['amount'] as num?)?.toDouble() ?? 0.0,
-          'pawnDate': timestamp,
-          'dueDate': Timestamp.fromDate(timestamp.toDate().add(const Duration(days: 30))),
+        batch.update(doc.reference, {
+          'cost': newCost,
+          'profit': newProfit,
+          'weight': weight, // Update weight if we estimated it
         });
+        needsCommit = true;
       }
     }
-    await batch.commit();
+
+    if (needsCommit) {
+      await batch.commit();
+      batch = FirebaseFirestore.instance.batch();
+      needsCommit = false;
+    }
+
+    // 3. Repair missing Profit/Interest fields in Redeem Transactions
+    final redeemTxQuery = await FirebaseFirestore.instance
+        .collection('transactions')
+        .where('type', isEqualTo: 'redeem')
+        .get();
+
+    for (var doc in redeemTxQuery.docs) {
+      final data = doc.data();
+      if (data['profit'] == null || data['interestPaid'] == null) {
+        final amount = (data['amount'] as num?)?.toDouble() ?? 0.0;
+        final assetId = data['assetId'] as String?;
+        
+        double principal = (data['principal'] as num?)?.toDouble() ?? 0.0;
+        
+        // If principal is missing, we try to estimate it as 98% of redemption (very rough)
+        // Better: ignore if we can't find the source asset, but let's at least set profit
+        if (principal <= 0) {
+          principal = amount * 0.98; 
+        }
+
+        final interestPaid = amount - principal;
+
+        batch.update(doc.reference, {
+          'principal': principal,
+          'interestPaid': interestPaid,
+          'profit': interestPaid,
+        });
+        needsCommit = true;
+      }
+    }
+
+    if (needsCommit) {
+      await batch.commit();
+    }
   }
 }

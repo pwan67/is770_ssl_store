@@ -6,6 +6,8 @@ class GoldTransaction {
   final TransactionType type;
   final double amount; // THB
   final double weight; // Baht
+  final double purity; // 0.965 or 0.9999
+  final double? laborFee; // ค่ากำเหน็จ
   final DateTime timestamp;
   final String details;
 
@@ -15,6 +17,8 @@ class GoldTransaction {
     required this.type,
     required this.amount,
     required this.weight,
+    this.purity = 0.965,
+    this.laborFee,
     required this.timestamp,
     required this.details,
   });
