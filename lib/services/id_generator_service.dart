@@ -18,18 +18,33 @@ class IdGeneratorService {
     'notifications': 'NTF',
   };
 
+  /// Default padding mappings for different collection types
+  static const Map<String, int> _paddingMap = {
+    'users': 6,
+    'transactions': 8,
+    'receipts': 8,
+    'invoices': 8,
+    'products': 5,
+    'appointments': 5,
+    'assets': 6,
+    'notifications': 6,
+  };
+
   /// Generates a sequential ID formatted according to best practices.
-  /// Defaults to: PREFIX-0001 (padding 4, separator '-')
+  /// Defaults to: PREFIX-000001 (padding varies by collection)
   Future<String> generateId(
     String collectionName, {
     String? prefixOverride,
-    int padding = 4,
+    int? paddingOverride,
     String separator = '-',
   }) async {
     // Determine the prefix
     String prefix = prefixOverride ?? 
                     _prefixMap[collectionName] ?? 
                     collectionName.substring(0, 3).toUpperCase();
+
+    // Determine the padding
+    int padding = paddingOverride ?? _paddingMap[collectionName] ?? 4;
 
     // Use a dedicated document per collection to avoid write bottlenecks
     final counterRef = _firestore
