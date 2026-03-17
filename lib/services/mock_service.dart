@@ -18,11 +18,13 @@ import 'package:firebase_auth/firebase_auth.dart';
 import 'package:firebase_storage/firebase_storage.dart';
 import 'wallet_service.dart';
 import 'id_generator_service.dart';
+import 'admin_cleanup_service.dart';
 import '../models/wallet_transaction.dart';
 
 class MockService {
   final WalletService _walletService = WalletService();
   final IdGeneratorService _idGeneratorService = IdGeneratorService();
+  final AdminCleanupService _adminCleanupService = AdminCleanupService();
 
   // Singleton pattern
   static final MockService _instance = MockService._internal();
@@ -45,11 +47,8 @@ class MockService {
     return query.docs.first.reference;
   }
 
-  Future<void> repairAllCounters() async {
-    await _idGeneratorService.repairCounter('users');
-    await _idGeneratorService.repairCounter('receipts');
-    await _idGeneratorService.repairCounter('products');
-    await _idGeneratorService.repairCounter('transactions');
+  Future<void> realignAllCounters() async {
+    await _adminCleanupService.realignAllCounters();
   }
 
   Future<void> _generateInitialNews() async {
@@ -1545,6 +1544,16 @@ class MockService {
         'id': productId,
       });
     }
+  }
+
+  /// Performs a full database cleanup and re-standardization.
+  /// Standardizes all IDs, removes legacy metadata, and wipes test data.
+  Future<void> performFullCleanup() async {
+    // 1. Run the fresh start (wipes transactions, apps, notifications, products)
+    await _adminCleanupService.performFreshStart();
+
+    // 2. Re-seed products with the new PRD-XXXXX format
+    await seedDummyProducts();
   }
 
   // Search and Filter helper (to be used locally on the streamed list)
