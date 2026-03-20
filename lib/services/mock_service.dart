@@ -18,13 +18,11 @@ import 'package:firebase_auth/firebase_auth.dart';
 import 'package:firebase_storage/firebase_storage.dart';
 import 'wallet_service.dart';
 import 'id_generator_service.dart';
-import 'admin_cleanup_service.dart';
 import '../models/wallet_transaction.dart';
 
 class MockService {
   final WalletService _walletService = WalletService();
   final IdGeneratorService _idGeneratorService = IdGeneratorService();
-  final AdminCleanupService _adminCleanupService = AdminCleanupService();
 
   // Singleton pattern
   static final MockService _instance = MockService._internal();
@@ -47,9 +45,7 @@ class MockService {
     return query.docs.first.reference;
   }
 
-  Future<void> realignAllCounters() async {
-    await _adminCleanupService.realignAllCounters();
-  }
+
 
   Future<void> _generateInitialNews() async {
     final batch = FirebaseFirestore.instance.batch();
@@ -654,6 +650,7 @@ class MockService {
     required TransactionType type,
     String? category,
     String? productId, // For simulated stock reduction
+    int quantity = 1,
     double purity = 0.965,
     double? laborFee,
   }) async {
@@ -741,7 +738,7 @@ class MockService {
           // 4. Deduct Stock
           if (productId != null && productDoc != null) {
             transaction.update(productDoc.reference, {
-              'stock': FieldValue.increment(-1),
+              'stock': FieldValue.increment(-quantity),
             });
           }
 
@@ -789,7 +786,7 @@ class MockService {
           'amount': amount,
           'weight': weight,
           'timestamp': FieldValue.serverTimestamp(),
-          'details': '${type.name.toUpperCase()}: $assetName ($weight Baht)',
+          'details': '${type.name.toUpperCase()}: $assetName ($weight Baht x$quantity)',
           'cost': totalCost,
           'profit': calculatedProfit,
           'purity': purity,
@@ -990,6 +987,9 @@ class MockService {
 
         final assetDoc = await transaction.get(assetRef);
         if (!assetDoc.exists) throw Exception('Asset not found in portfolio.');
+        if ((assetDoc.data() as Map<String, dynamic>)['status'] != 'owned') {
+          throw Exception('Only fully owned assets can be pawned.');
+        }
 
         // 2. Perform Wallet Transaction (Add Loan Funds)
         await _walletService.performTransactionWithTx(
@@ -1328,15 +1328,18 @@ class MockService {
     final uid = currentUserId;
     if (uid == null) throw Exception('User not logged in');
 
-    await FirebaseFirestore.instance
+    final batch = FirebaseFirestore.instance.batch();
+
+    final aptRef = FirebaseFirestore.instance
         .collection('appointments')
-        .doc(appointmentId)
-        .delete();
+        .doc(appointmentId);
+    batch.delete(aptRef);
+
     final userRef = await _getUserDocRef(uid);
-    await userRef
-        .collection('assets')
-        .doc(assetId)
-        .update({'status': 'owned'});
+    final assetRef = userRef.collection('assets').doc(assetId);
+    batch.update(assetRef, {'status': 'owned'});
+
+    await batch.commit();
   }
 
   Future<void> completeAppointment({
@@ -1546,15 +1549,7 @@ class MockService {
     }
   }
 
-  /// Performs a full database cleanup and re-standardization.
-  /// Standardizes all IDs, removes legacy metadata, and wipes test data.
-  Future<void> performFullCleanup() async {
-    // 1. Run the fresh start (wipes transactions, apps, notifications, products)
-    await _adminCleanupService.performFreshStart();
 
-    // 2. Re-seed products with the new PRD-XXXXX format
-    await seedDummyProducts();
-  }
 
   // Search and Filter helper (to be used locally on the streamed list)
   List<Product> filterProducts(List<Product> allProducts, String query) {

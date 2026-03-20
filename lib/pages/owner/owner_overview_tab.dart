@@ -142,6 +142,7 @@ class _OwnerOverviewTabState extends State<OwnerOverviewTab> {
                           23,
                           59,
                           59,
+                          59,
                         ),
                       );
                     });
@@ -153,8 +154,9 @@ class _OwnerOverviewTabState extends State<OwnerOverviewTab> {
             ],
           ),
           const SizedBox(height: 16),
+
+          const SizedBox(height: 24),
           _buildMetricsGrid(context),
-          const SizedBox(height: 32),
           const SizedBox(height: 32),
           const Text(
             'Recent Global Activity',
@@ -162,112 +164,12 @@ class _OwnerOverviewTabState extends State<OwnerOverviewTab> {
           ),
           const SizedBox(height: 12),
           _buildRecentActivityList(),
-          const SizedBox(height: 48),
-          _buildMaintenanceSection(context),
         ],
       ),
     );
   }
 
-  Widget _buildMaintenanceSection(BuildContext context) {
-    return Container(
-      padding: const EdgeInsets.all(20),
-      decoration: BoxDecoration(
-        color: Colors.red[50],
-        borderRadius: BorderRadius.circular(16),
-        border: Border.all(color: Colors.red[100]!),
-      ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Row(
-            children: [
-              Icon(Icons.warning_amber_rounded, color: Colors.red[900]),
-              const SizedBox(width: 8),
-              Text(
-                'Database Maintenance',
-                style: TextStyle(
-                  fontSize: 18,
-                  fontWeight: FontWeight.bold,
-                  color: Colors.red[900],
-                ),
-              ),
-            ],
-          ),
-          const SizedBox(height: 8),
-          const Text(
-            'Use these tools to re-standardize IDs, remove legacy test data, and ensure database scalability alignment. These actions are destructive.',
-            style: TextStyle(fontSize: 13, color: Colors.black87),
-          ),
-          const SizedBox(height: 20),
-          SizedBox(
-            width: double.infinity,
-            child: ElevatedButton.icon(
-              onPressed: () => _confirmFullCleanup(context),
-              icon: const Icon(Icons.delete_sweep),
-              label: const Text('Perform Full Cleanup (Fresh Start)'),
-              style: ElevatedButton.styleFrom(
-                backgroundColor: Colors.red[700],
-                foregroundColor: Colors.white,
-                padding: const EdgeInsets.symmetric(vertical: 16),
-                shape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(12),
-                ),
-              ),
-            ),
-          ),
-        ],
-      ),
-    );
-  }
 
-  void _confirmFullCleanup(BuildContext context) {
-    showDialog(
-      context: context,
-      builder: (context) => AlertDialog(
-        title: const Text('Confirm Full Cleanup?'),
-        content: const Text(
-            'This will wipe all Transactions, Appointments, Notifications, and Products. It will also realign all ID counters for scalability. This action cannot be undone.'),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(context),
-            child: const Text('Cancel'),
-          ),
-          ElevatedButton(
-            onPressed: () async {
-              Navigator.pop(context);
-              
-              // Show loading overlay
-              showDialog(
-                context: context,
-                barrierDismissible: false,
-                builder: (context) => const Center(child: CircularProgressIndicator()),
-              );
-
-              try {
-                await MockService().performFullCleanup();
-                if (context.mounted) {
-                  Navigator.pop(context); // Remove loading
-                  ScaffoldMessenger.of(context).showSnackBar(
-                    const SnackBar(content: Text('Database cleanup successful!')),
-                  );
-                }
-              } catch (e) {
-                if (context.mounted) {
-                  Navigator.pop(context); // Remove loading
-                  ScaffoldMessenger.of(context).showSnackBar(
-                    SnackBar(content: Text('Error: $e'), backgroundColor: Colors.red),
-                  );
-                }
-              }
-            },
-            style: ElevatedButton.styleFrom(backgroundColor: Colors.red),
-            child: const Text('Yes, Wipe & Cleanup'),
-          ),
-        ],
-      ),
-    );
-  }
 
   Widget _buildMetricsGrid(BuildContext context) {
     return Column(

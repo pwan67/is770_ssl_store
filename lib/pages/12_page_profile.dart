@@ -285,46 +285,6 @@ class _ProfileMemberView extends StatelessWidget {
                 subtitle: 'Update your name, photo, and phone number',
                 onTap: () => Navigator.push(context, MaterialPageRoute(builder: (_) => const EditProfilePage())),
               ),
-              _buildDivider(),
-              _buildListTile(
-                icon: Icons.sync,
-                title: 'Sync Dummy Products',
-                subtitle: 'Admin only: Restore default catalog items to Firestore',
-                onTap: () async {
-                  try {
-                    ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Syncing products...')));
-                    await MockService().seedDummyProducts();
-                    if (context.mounted) {
-                      ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Products synced successfully!')));
-                    }
-                  } catch (e) {
-                    if (context.mounted) {
-                      ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Error: $e')));
-                    }
-                  }
-                },
-                trailing: const Icon(Icons.admin_panel_settings, color: Colors.grey),
-              ),
-              _buildDivider(),
-              _buildListTile(
-                icon: Icons.numbers,
-                title: 'Sync ID Database',
-                subtitle: 'Admin: Align running numbers with existing records',
-                onTap: () async {
-                  try {
-                    ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Syncing ID counters...')));
-                    await MockService().repairAllCounters();
-                    if (context.mounted) {
-                      ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('ID counters synced successfully!')));
-                    }
-                  } catch (e) {
-                    if (context.mounted) {
-                      ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Error: $e')));
-                    }
-                  }
-                },
-                trailing: const Icon(Icons.admin_panel_settings, color: Colors.grey),
-              ),
             ]),
             const SizedBox(height: 32),
             _buildInfoCard(

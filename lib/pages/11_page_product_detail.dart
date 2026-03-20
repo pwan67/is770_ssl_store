@@ -97,6 +97,7 @@ class _ProductDetailPageState extends State<ProductDetailPage> {
                               type: TransactionType.buy,
                               category: widget.product.category,
                               productId: widget.product.id,
+                              quantity: _quantity,
                             );
 
                             if (mounted) {

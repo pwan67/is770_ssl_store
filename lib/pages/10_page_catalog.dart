@@ -136,28 +136,6 @@ class _CatalogPageState extends State<CatalogPage> {
                         const Icon(Icons.inventory_2_outlined, size: 64, color: Colors.grey),
                         const SizedBox(height: 16),
                         const Text('No jewelry found matching your criteria.', textAlign: TextAlign.center, style: TextStyle(color: Colors.grey, fontSize: 16)),
-                        const SizedBox(height: 24),
-                        ElevatedButton.icon(
-                          onPressed: () async {
-                            try {
-                              ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Syncing products...')));
-                              await MockService().seedDummyProducts();
-                              if (context.mounted) {
-                                ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Products synced successfully!')));
-                              }
-                            } catch (e) {
-                              if (context.mounted) {
-                                ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Error: $e')));
-                              }
-                            }
-                          },
-                          icon: const Icon(Icons.sync),
-                          label: const Text('Sync Dummy Products'),
-                          style: ElevatedButton.styleFrom(
-                            backgroundColor: const Color(0xFF800000),
-                            foregroundColor: Colors.white,
-                          ),
-                        ),
                       ],
                     ),
                   );
