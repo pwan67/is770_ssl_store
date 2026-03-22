@@ -54,19 +54,19 @@ class _MainScreenState extends State<MainScreen> {
           items: const [
             BottomNavigationBarItem(
               icon: Icon(Icons.home),
-              label: 'Home',
+              label: 'หน้าแรก',
             ),
             BottomNavigationBarItem(
               icon: Icon(Icons.show_chart),
-              label: 'Trade',
+              label: 'ซื้อ-ขาย',
             ),
             BottomNavigationBarItem(
               icon: Icon(Icons.pie_chart), // or savings icon
-              label: 'My Gold',
+              label: 'ทองของฉัน',
             ),
             BottomNavigationBarItem(
               icon: Icon(Icons.person),
-              label: 'Profile',
+              label: 'โปรไฟล์',
             ),
           ],
         ),

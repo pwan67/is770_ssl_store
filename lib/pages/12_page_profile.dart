@@ -100,7 +100,7 @@ class _ProfileGuestView extends StatelessWidget {
                     ),
                     const SizedBox(height: 24),
                     const Text(
-                      'Welcome to\nSung Seng Lee Gold',
+                      'ยินดีต้อนรับสู่\nห้างทองสุ้นเซ่งหลี',
                       textAlign: TextAlign.center,
                       style: TextStyle(
                         fontFamily: 'Georgia', // Elegant serif fallback
@@ -111,7 +111,7 @@ class _ProfileGuestView extends StatelessWidget {
                     ),
                     const SizedBox(height: 8),
                     const Text(
-                      'Log in to view your portfolio, manage appointments, and track your daily balances.',
+                      'เข้าสู่ระบบเพื่อดูพอร์ตการลงทุน จัดการการนัดหมาย และติดตามยอดคงเหลือของคุณ',
                       textAlign: TextAlign.center,
                       style: TextStyle(fontSize: 14, color: Colors.grey, height: 1.5),
                     ),
@@ -121,7 +121,7 @@ class _ProfileGuestView extends StatelessWidget {
                       child: ElevatedButton.icon(
                         onPressed: onLoginRequest,
                         icon: const Icon(Icons.login),
-                        label: const Text('Log In', style: TextStyle(fontSize: 16)),
+                        label: const Text('เข้าสู่ระบบ', style: TextStyle(fontSize: 16)),
                         style: ElevatedButton.styleFrom(
                           backgroundColor: const Color(0xFF800000),
                           foregroundColor: Colors.white,
@@ -137,7 +137,7 @@ class _ProfileGuestView extends StatelessWidget {
                       child: OutlinedButton.icon(
                         onPressed: onSignUpRequest,
                         icon: const Icon(Icons.person_add),
-                        label: const Text('Sign Up', style: TextStyle(fontSize: 16)),
+                        label: const Text('สมัครสมาชิก', style: TextStyle(fontSize: 16)),
                         style: OutlinedButton.styleFrom(
                           foregroundColor: const Color(0xFF800000),
                           side: const BorderSide(color: Color(0xFF800000), width: 1.5),
@@ -180,8 +180,8 @@ class _ProfileMemberView extends StatelessWidget {
   }
 
   Widget _buildHeroHeader(BuildContext context) {
-    final name = user.displayName ?? 'Valued Member';
-    final initial = name.isNotEmpty ? name[0].toUpperCase() : 'M';
+    final name = user.displayName ?? 'สมาชิกคนสำคัญ';
+    final initial = name.isNotEmpty ? name[0].toUpperCase() : 'ส';
 
     return SliverAppBar(
       expandedHeight: 280,
@@ -247,7 +247,7 @@ class _ProfileMemberView extends StatelessWidget {
                         ],
                       ),
                       child: Text(
-                        '${NumberFormat('#,##0').format(points)} PTS',
+                        '${NumberFormat('#,##0').format(points)} คะแนน',
                         style: const TextStyle(fontSize: 12, fontWeight: FontWeight.w900, color: Color(0xFF800000), letterSpacing: 0.5),
                       ),
                     );
@@ -277,36 +277,36 @@ class _ProfileMemberView extends StatelessWidget {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
-             _buildSectionTitle('Account Details'),
+             _buildSectionTitle('ข้อมูลบัญชี'),
             _buildGroupedList([
               _buildListTile(
                 icon: Icons.person_outline,
-                title: 'Edit Profile',
-                subtitle: 'Update your name, photo, and phone number',
+                title: 'แก้ไขข้อมูลส่วนตัว',
+                subtitle: 'อัปเดตชื่อ รูปถ่าย และเบอร์โทรศัพท์ของคุณ',
                 onTap: () => Navigator.push(context, MaterialPageRoute(builder: (_) => const EditProfilePage())),
               ),
             ]),
             const SizedBox(height: 32),
             _buildInfoCard(
               icon: Icons.email,
-              title: 'Email Address',
-              subtitle: user.email ?? 'No email provided',
+              title: 'ที่อยู่อีเมล',
+              subtitle: user.email ?? 'ไม่ได้ระบุอีเมล',
             ),
             
             const SizedBox(height: 32),
-            _buildSectionTitle('Store Services'),
+            _buildSectionTitle('บริการของทางร้าน'),
             _buildGroupedList([
               _buildListTile(
                 icon: Icons.calendar_month, 
-                title: 'My Appointments', 
-                subtitle: 'Manage physical gold pickup schedule',
+                title: 'รายการนัดหมายของฉัน', 
+                subtitle: 'จัดการตารางนัดหมายรับทองที่หน้าร้าน',
                 onTap: () => Navigator.push(context, MaterialPageRoute(builder: (_) => const AppointmentPage())),
               ),
               _buildDivider(),
               _buildListTile(
                 icon: Icons.history, 
-                title: 'Transaction History', 
-                subtitle: 'View your past buys, sells, and pawns',
+                title: 'ประวัติการทำรายการ', 
+                subtitle: 'ดูรายการซื้อ ขายคืน และจำนำ ย้อนหลัง',
                 onTap: () {
                    Navigator.push(context, MaterialPageRoute(builder: (_) => const TransactionHistoryPage()));
                 },
@@ -314,11 +314,11 @@ class _ProfileMemberView extends StatelessWidget {
             ]),
             
             const SizedBox(height: 32),
-            _buildSectionTitle('Preferences'),
+            _buildSectionTitle('การตั้งค่า'),
             _buildGroupedList([
               _buildListTile(
                 icon: Icons.lock_outline, 
-                title: 'Security Settings', 
+                title: 'ระบบความปลอดภัย', 
                 onTap: () {
                    Navigator.push(context, MaterialPageRoute(builder: (_) => const SecuritySettingsPage()));
                 },
@@ -326,7 +326,7 @@ class _ProfileMemberView extends StatelessWidget {
               _buildDivider(),
               _buildListTile(
                 icon: Icons.help_outline, 
-                title: 'Help & Support', 
+                title: 'ความช่วยเหลือและติดต่อเรา', 
                 onTap: () {
                    Navigator.push(context, MaterialPageRoute(builder: (_) => const HelpSupportPage()));
                 },
@@ -429,7 +429,7 @@ class _ProfileMemberView extends StatelessWidget {
     return ElevatedButton.icon(
       onPressed: onLogout,
       icon: const Icon(Icons.logout),
-      label: const Text('Log Out', style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold)),
+      label: const Text('ออกจากระบบ', style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold)),
       style: ElevatedButton.styleFrom(
         backgroundColor: Colors.white,
         foregroundColor: Colors.red.shade700,

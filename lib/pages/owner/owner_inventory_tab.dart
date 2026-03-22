@@ -15,7 +15,7 @@ class OwnerInventoryTab extends StatelessWidget {
           width: double.infinity,
           color: Colors.white,
           child: const Text(
-            'Inventory Management',
+            'จัดการคลังสินค้า',
             style: TextStyle(fontSize: 24, fontWeight: FontWeight.bold, color: Color(0xFF800000)),
           ),
         ),
@@ -34,7 +34,7 @@ class OwnerInventoryTab extends StatelessWidget {
           return const Center(child: CircularProgressIndicator());
         }
         if (!snapshot.hasData || snapshot.data!.docs.isEmpty) {
-          return const Center(child: Text('No products found in inventory.'));
+          return const Center(child: Text('ไม่พบสินค้าในคลัง'));
         }
 
         final formatter = NumberFormat('#,##0.00');
@@ -79,7 +79,7 @@ class OwnerInventoryTab extends StatelessWidget {
                           ),
                           const SizedBox(height: 4),
                           Text(
-                            'Weight: ${weight.toStringAsFixed(2)} Baht | Price Offset: ฿${formatter.format(priceOffset)}',
+                            'น้ำหนัก: ${weight.toStringAsFixed(2)} บาท | ส่วนต่างราคา: ฿${formatter.format(priceOffset)}',
                             style: const TextStyle(color: Colors.grey, fontSize: 13),
                           ),
                           const SizedBox(height: 8),
@@ -92,7 +92,7 @@ class OwnerInventoryTab extends StatelessWidget {
                                   borderRadius: BorderRadius.circular(12),
                                 ),
                                 child: Text(
-                                  isOutOfStock ? 'OUT OF STOCK' : 'Stock: $stock',
+                                  isOutOfStock ? 'สินค้าหมด' : 'คงเหลือ: $stock',
                                   style: TextStyle(
                                     color: isOutOfStock ? Colors.red[900] : Colors.green[900],
                                     fontWeight: FontWeight.bold,
@@ -109,17 +109,17 @@ class OwnerInventoryTab extends StatelessWidget {
                       children: [
                         IconButton(
                           icon: const Icon(Icons.add_circle, color: Color(0xFF1E88E5)),
-                          tooltip: 'Add Stock (Restock)',
+                          tooltip: 'เติมสินค้า',
                           onPressed: () {
                             _showRestockDialog(context, doc.id, name);
                           },
                         ),
                         IconButton(
                           icon: const Icon(Icons.edit, color: Colors.grey),
-                          tooltip: 'Edit (Not implemented)',
+                          tooltip: 'แก้ไข (ยังไม่เปิดใช้งาน)',
                           onPressed: () {
                             ScaffoldMessenger.of(context).showSnackBar(
-                              const SnackBar(content: Text('Edit product details coming soon.')),
+                              const SnackBar(content: Text('ระบบแก้ไขข้อมูลสินค้าจะเปิดใช้งานเร็วๆ นี้')),
                             );
                           },
                         ),
@@ -142,20 +142,20 @@ class OwnerInventoryTab extends StatelessWidget {
     showDialog(
       context: context,
       builder: (ctx) => AlertDialog(
-        title: Text('Restock: $productName'),
+        title: Text('เติมสินค้า: $productName'),
         content: Column(
           mainAxisSize: MainAxisSize.min,
           children: [
             TextField(
               controller: qtyController,
-              decoration: const InputDecoration(labelText: 'Quantity to Add'),
+              decoration: const InputDecoration(labelText: 'จำนวนที่เติม'),
               keyboardType: TextInputType.number,
             ),
             const SizedBox(height: 16),
             TextField(
               controller: costController,
               decoration: const InputDecoration(
-                labelText: 'Total Acquisition Cost (THB)',
+                labelText: 'ราคาทุนรวม (บาท)',
                 prefixText: '฿ ',
               ),
               keyboardType: const TextInputType.numberWithOptions(decimal: true),
@@ -165,7 +165,7 @@ class OwnerInventoryTab extends StatelessWidget {
         actions: [
           TextButton(
             onPressed: () => Navigator.pop(ctx),
-            child: const Text('Cancel'),
+            child: const Text('ยกเลิก'),
           ),
           ElevatedButton(
             onPressed: () async {
@@ -174,7 +174,7 @@ class OwnerInventoryTab extends StatelessWidget {
               
               if (qty <= 0) {
                 ScaffoldMessenger.of(context).showSnackBar(
-                  const SnackBar(content: Text('Please enter a valid quantity.')),
+                  const SnackBar(content: Text('กรุณาระบุจำนวนที่ถูกต้อง')),
                 );
                 return;
               }
@@ -189,7 +189,7 @@ class OwnerInventoryTab extends StatelessWidget {
                 if (context.mounted) {
                   Navigator.pop(ctx);
                   ScaffoldMessenger.of(context).showSnackBar(
-                    const SnackBar(content: Text('Stock updated and cost recorded successfully.')),
+                    const SnackBar(content: Text('อัปเดตสต็อกและบันทึกข้อมูลต้นทุนเรียบร้อยแล้ว')),
                   );
                 }
               } catch (e) {
@@ -200,7 +200,7 @@ class OwnerInventoryTab extends StatelessWidget {
                 }
               }
             },
-            child: const Text('Confirm Restock'),
+            child: const Text('ยืนยันการเติมสินค้า'),
           ),
         ],
       ),

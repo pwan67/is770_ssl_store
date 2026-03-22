@@ -11,7 +11,7 @@ class TransactionHistoryPage extends StatelessWidget {
     return Scaffold(
       backgroundColor: const Color(0xFFF5F5F7),
       appBar: AppBar(
-        title: const Text('Transaction History'),
+        title: const Text('ประวัติการทำรายการ'),
         backgroundColor: const Color(0xFF800000),
         foregroundColor: Colors.white,
       ),
@@ -31,7 +31,7 @@ class TransactionHistoryPage extends StatelessWidget {
           if (transactions.isEmpty) {
             return const Center(
               child: Text(
-                'No transactions found.',
+                'ไม่พบประวัติการทำรายการ',
                 style: TextStyle(fontSize: 16, color: Colors.grey),
               ),
             );
@@ -96,8 +96,18 @@ class TransactionHistoryPage extends StatelessWidget {
         break;
     }
 
-    final dateFormat = DateFormat('MMM dd, yyyy • hh:mm a');
+    final dateFormat = DateFormat('dd MMM yyyy • HH:mm น.');
     final currencyFormat = NumberFormat.currency(locale: 'th_TH', symbol: '฿');
+
+    String typeLabel = '';
+    switch (tx.type) {
+      case TransactionType.buy: typeLabel = 'ซื้อทอง'; break;
+      case TransactionType.sell: typeLabel = 'ขายคืน'; break;
+      case TransactionType.pawn: typeLabel = 'จำนำ'; break;
+      case TransactionType.redeem: typeLabel = 'ไถ่ถอน'; break;
+      case TransactionType.savings_deposit: typeLabel = 'ออมทอง (ฝาก)'; break;
+      case TransactionType.savings_withdraw: typeLabel = 'ออมทอง (ถอน)'; break;
+    }
 
     return Container(
       padding: const EdgeInsets.all(16),
@@ -128,7 +138,7 @@ class TransactionHistoryPage extends StatelessWidget {
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 Text(
-                  tx.type.name.toUpperCase(),
+                  typeLabel.toUpperCase(),
                   style: TextStyle(
                     fontSize: 12,
                     fontWeight: FontWeight.bold,

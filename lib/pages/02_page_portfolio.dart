@@ -36,14 +36,14 @@ class _PortfolioPageState extends State<PortfolioPage> {
       context: context,
       builder: (context) {
         return AlertDialog(
-          title: const Text('Deposit Funds'),
+          title: const Text('เติมเงิน'),
           content: TextField(
             controller: amountController,
             keyboardType: TextInputType.number,
-            decoration: const InputDecoration(labelText: 'Amount (฿)', border: OutlineInputBorder()),
+            decoration: const InputDecoration(labelText: 'จำนวนเงิน (฿)', border: OutlineInputBorder()),
           ),
           actions: [
-            TextButton(onPressed: () => Navigator.pop(context), child: const Text('Cancel')),
+            TextButton(onPressed: () => Navigator.pop(context), child: const Text('ยกเลิก')),
             ElevatedButton(
               onPressed: () async {
                 final amount = double.tryParse(amountController.text) ?? 0;
@@ -52,7 +52,7 @@ class _PortfolioPageState extends State<PortfolioPage> {
                   if (mounted) Navigator.pop(context);
                 }
               },
-              child: const Text('Confirm'),
+              child: const Text('ยืนยัน'),
             ),
           ],
         );
@@ -67,14 +67,14 @@ class _PortfolioPageState extends State<PortfolioPage> {
       context: context,
       builder: (context) {
         return AlertDialog(
-          title: const Text('Withdraw Funds'),
+          title: const Text('ถอนเงิน'),
           content: TextField(
             controller: amountController,
             keyboardType: TextInputType.number,
-            decoration: InputDecoration(labelText: 'Amount (Max: ฿${formatter.format(maxBalance)})', border: const OutlineInputBorder()),
+            decoration: InputDecoration(labelText: 'จำนวนเงิน (สูงสุด: ฿${formatter.format(maxBalance)})', border: const OutlineInputBorder()),
           ),
           actions: [
-            TextButton(onPressed: () => Navigator.pop(context), child: const Text('Cancel')),
+            TextButton(onPressed: () => Navigator.pop(context), child: const Text('ยกเลิก')),
             ElevatedButton(
               onPressed: () async {
                 final amount = double.tryParse(amountController.text) ?? 0;
@@ -82,10 +82,10 @@ class _PortfolioPageState extends State<PortfolioPage> {
                   await _service.withdrawFunds(amount);
                   if (mounted) Navigator.pop(context);
                 } else if (amount > maxBalance) {
-                  ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Insufficient funds')));
+                  ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('ยอดเงินไม่เพียงพอ')));
                 }
               },
-              child: const Text('Confirm'),
+              child: const Text('ยืนยัน'),
             ),
           ],
         );
@@ -97,7 +97,7 @@ class _PortfolioPageState extends State<PortfolioPage> {
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
-        title: const Text('My Gold Portfolio'),
+        title: const Text('พอร์ตทองของฉัน'),
         actions: [
           IconButton(
             icon: const Icon(Icons.refresh),
@@ -118,7 +118,7 @@ class _PortfolioPageState extends State<PortfolioPage> {
                 children: [
                    const Icon(Icons.lock_outline, size: 64, color: Colors.grey),
                    const SizedBox(height: 16),
-                   const Text('Please login to view your Portfolio', style: TextStyle(fontSize: 18)),
+                   const Text('กรุณาเข้าสู่ระบบเพื่อดูพอร์ตทองของคุณ', style: TextStyle(fontSize: 18)),
                    const SizedBox(height: 24),
                    ElevatedButton(
                      onPressed: () => Navigator.pushNamed(context, '/login'),
@@ -126,7 +126,7 @@ class _PortfolioPageState extends State<PortfolioPage> {
                        backgroundColor: const Color(0xFF800000),
                        foregroundColor: Colors.white,
                      ),
-                     child: const Text('Login / Sign Up'),
+                     child: const Text('เข้าสู่ระบบ / สมัครสมาชิก'),
                    )
                 ],
               ),
@@ -206,7 +206,7 @@ class _PortfolioPageState extends State<PortfolioPage> {
                                   ElevatedButton.icon(
                                     onPressed: () => _showTopUpDialog(context),
                                     icon: const Icon(Icons.add, size: 18),
-                                    label: const Text('Deposit'),
+                                    label: const Text('เติมเงิน'),
                                     style: ElevatedButton.styleFrom(
                                         backgroundColor: Colors.white, foregroundColor: Colors.green),
                                   ),
@@ -214,7 +214,7 @@ class _PortfolioPageState extends State<PortfolioPage> {
                                   OutlinedButton.icon(
                                     onPressed: () => _showWithdrawDialog(context, walletBalance),
                                     icon: const Icon(Icons.remove, size: 18),
-                                    label: const Text('Withdraw'),
+                                    label: const Text('ถอนเงิน'),
                                     style: OutlinedButton.styleFrom(
                                         foregroundColor: Colors.white, side: const BorderSide(color: Colors.white)),
                                   ),
@@ -241,12 +241,12 @@ class _PortfolioPageState extends State<PortfolioPage> {
                           ),
                           child: Column(
                             children: [
-                              const Text('Total Accumulated Weight', style: TextStyle(color: Colors.white70, fontSize: 16)),
+                              const Text('น้ำหนักทองสะสมรวม', style: TextStyle(color: Colors.white70, fontSize: 16)),
                               const SizedBox(height: 8),
-                              Text('${totalWeight.toStringAsFixed(2)} Baht', 
+                              Text('${totalWeight.toStringAsFixed(2)} บาท', 
                                 style: const TextStyle(color: Colors.white, fontSize: 36, fontWeight: FontWeight.bold)),
                               const Divider(color: Colors.white24, height: 32),
-                              const Text('Estimated Value', style: TextStyle(color: Colors.white70, fontSize: 16)),
+                              const Text('มูลค่าประเมินรวม', style: TextStyle(color: Colors.white70, fontSize: 16)),
                               const SizedBox(height: 8),
                               Text('฿ ${formatter.format(totalValue)}', 
                                 style: const TextStyle(color: Color(0xFFFFD700), fontSize: 28, fontWeight: FontWeight.bold)),
@@ -274,7 +274,7 @@ class _PortfolioPageState extends State<PortfolioPage> {
                                     ),
                                     const SizedBox(width: 8),
                                     Text(
-                                      '${isProfit ? 'Profit' : 'Loss'}: $pnlSign฿${formatter.format(pnl.abs())} ($pnlSign${pnlPercentage.toStringAsFixed(2)}%)',
+                                      '${isProfit ? 'กำไร' : 'ขาดทุน'}: $pnlSign฿${formatter.format(pnl.abs())} ($pnlSign${pnlPercentage.toStringAsFixed(2)}%)',
                                       style: TextStyle(
                                         color: pnlColor,
                                         fontWeight: FontWeight.bold,
@@ -290,27 +290,27 @@ class _PortfolioPageState extends State<PortfolioPage> {
                         const SizedBox(height: 32),
                     
                     if (assets.isEmpty && savingsAccount.totalWeightSaved == 0) ...[
-                      const _SectionHeader(title: 'My Assets (0)'),
+                      const _SectionHeader(title: 'สินทรัพย์ของฉัน (0)'),
                       const SizedBox(height: 12),
                       const Center(child: Padding(
                         padding: EdgeInsets.all(20.0),
-                        child: Text('No gold assets yet.\nStart buying to build your portfolio!', textAlign: TextAlign.center, style: TextStyle(color: Colors.grey)),
+                        child: Text('ยังไม่มีสินทรัพย์ทอง\nเริ่มซื้อเพื่อสร้างพอร์ตของคุณ!', textAlign: TextAlign.center, style: TextStyle(color: Colors.grey)),
                       ))
                     ] else ...[
                       if (savingsAccount.totalWeightSaved > 0) ...[
-                        const _SectionHeader(title: 'Gold Savings (ออมทอง)'),
+                        const _SectionHeader(title: 'รายการออมทอง'),
                         const SizedBox(height: 12),
                         _buildSavingsAssetCard(savingsAccount, _currentRate?.buyPrice ?? 40000.0),
                         const SizedBox(height: 16),
                       ],
                       if (ownedAssets.isNotEmpty) ...[
-                        _SectionHeader(title: 'My Owned Gold (${ownedAssets.length})'),
+                        _SectionHeader(title: 'ทองที่เป็นเจ้าของ (${ownedAssets.length})'),
                         const SizedBox(height: 12),
                         ...ownedAssets.map((asset) => _AssetCard(asset: asset, currentRate: _currentRate)),
                       ],
                       if (pawnedAssets.isNotEmpty) ...[
                         const SizedBox(height: 16),
-                        _SectionHeader(title: 'My Pawned Gold (${pawnedAssets.length})'),
+                        _SectionHeader(title: 'ทองที่จำนำไว้ (${pawnedAssets.length})'),
                         const SizedBox(height: 12),
                         ...pawnedAssets.map((asset) => _AssetCard(asset: asset, currentRate: _currentRate)),
                       ],
@@ -319,7 +319,7 @@ class _PortfolioPageState extends State<PortfolioPage> {
                     const SizedBox(height: 32),
                     
                     // Transaction History
-                    const _SectionHeader(title: 'Recent Transactions'),
+                    const _SectionHeader(title: 'รายการล่าสุด'),
                     const SizedBox(height: 12),
                     
                     StreamBuilder<List<GoldTransaction>>(
@@ -397,7 +397,7 @@ class _PortfolioPageState extends State<PortfolioPage> {
         onTap: () {
             // Navigate directly to the Savings Page if they tap this
             Navigator.pushNamed(context, '/'); // Quick hack to jump, but preferably route to GoldSavingsPage
-            ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Manage on the Gold Savings page.')));
+            ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('จัดการที่หน้าออมทอง')));
         },
         borderRadius: BorderRadius.circular(12),
         child: Padding(
@@ -420,8 +420,8 @@ class _PortfolioPageState extends State<PortfolioPage> {
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    const Text('Fractional Gold Savings', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16)),
-                    Text('${account.totalWeightSaved.toStringAsFixed(4)} Baht • Invested ฿${formatter.format(account.totalAmountInvested)}', style: const TextStyle(fontSize: 12, color: Colors.grey)),
+                    const Text('ออมทองปันส่วน', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16)),
+                    Text('${account.totalWeightSaved.toStringAsFixed(4)} บาท • ลงทุนแล้ว ฿${formatter.format(account.totalAmountInvested)}', style: const TextStyle(fontSize: 12, color: Colors.grey)),
                   ],
                 ),
               ),
@@ -475,7 +475,7 @@ class _AssetCardState extends State<_AssetCard> {
         return StatefulBuilder(
           builder: (context, setStateDialog) {
              return AlertDialog(
-              title: const Text('Redeem Pawned Asset'),
+              title: const Text('ไถ่ถอนทองจำนำ'),
               content: StreamBuilder<double>(
                 stream: _service.getWalletBalanceStream(),
                 builder: (context, snapshot) {
@@ -487,20 +487,20 @@ class _AssetCardState extends State<_AssetCard> {
                     mainAxisSize: MainAxisSize.min,
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      Text('Asset: ${widget.asset.name}'),
-                      Text('Weight: ${widget.asset.weight} Baht'),
+                      Text('สินค้า: ${widget.asset.name}'),
+                      Text('น้ำหนัก: ${widget.asset.weight} บาท'),
                       const SizedBox(height: 12),
                       Row(
                         mainAxisAlignment: MainAxisAlignment.spaceBetween,
                         children: [
-                          const Text('Principal Loan:'),
+                          const Text('เงินต้น:'),
                           Text('฿ ${formatter.format(principal)}'),
                         ],
                       ),
                       Row(
                         mainAxisAlignment: MainAxisAlignment.spaceBetween,
                         children: [
-                          const Text('Standard Interest:'),
+                          const Text('ดอกเบี้ยปกติ:'),
                           Text('฿ ${formatter.format(interest)}'),
                         ],
                       ),
@@ -508,7 +508,7 @@ class _AssetCardState extends State<_AssetCard> {
                         Row(
                           mainAxisAlignment: MainAxisAlignment.spaceBetween,
                           children: [
-                            const Text('Overdue Penalty:', style: TextStyle(color: Colors.red)),
+                            const Text('ค่าปรับล่าช้า:', style: TextStyle(color: Colors.red)),
                             Text('฿ ${formatter.format(penalty)}', style: const TextStyle(color: Colors.red)),
                           ],
                         ),
@@ -517,17 +517,17 @@ class _AssetCardState extends State<_AssetCard> {
                       Row(
                         mainAxisAlignment: MainAxisAlignment.spaceBetween,
                         children: [
-                          const Text('Total to Pay:', style: TextStyle(fontWeight: FontWeight.bold)),
+                          const Text('ยอดชำระรวม:', style: TextStyle(fontWeight: FontWeight.bold)),
                           Text('฿ ${formatter.format(totalOwed)}', style: const TextStyle(color: Colors.red, fontWeight: FontWeight.bold)),
                         ],
                       ),
                       const SizedBox(height: 16),
                       if (hasEnoughFunds) ...[
-                        const Text('Estimated New Balance:', style: TextStyle(fontWeight: FontWeight.bold)),
+                        const Text('ยอดเงินใหม่โดยประมาณ:', style: TextStyle(fontWeight: FontWeight.bold)),
                         Text('฿ ${formatter.format(newBalance)}', style: const TextStyle(color: Colors.blue, fontSize: 16, fontWeight: FontWeight.bold)),
                       ] else ...[
                         const Text(
-                          'Insufficient funds in wallet to redeem. Please deposit more money.',
+                          'ยอดเงินในวอลเล็ตไม่เพียงพอสำหรับการไถ่ถอน กรุณาเติมเงิน',
                           style: TextStyle(color: Colors.red, fontWeight: FontWeight.bold, fontSize: 12),
                         ),
                       ],
@@ -555,7 +555,7 @@ class _AssetCardState extends State<_AssetCard> {
                            await _service.redeemAsset(asset: widget.asset, totalOwed: totalOwed);
                            if (mounted) {
                               Navigator.of(context).pop();
-                              ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Asset Redeemed Successfully!')));
+                              ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('ไถ่ถอนสำเร็จ!')));
                            }
                         } catch (e) {
                           if (mounted) {
@@ -571,7 +571,7 @@ class _AssetCardState extends State<_AssetCard> {
                       style: ElevatedButton.styleFrom(backgroundColor: const Color(0xFF800000)),
                       child: _isProcessing 
                         ? const SizedBox(width: 16, height: 16, child: CircularProgressIndicator(color: Colors.white, strokeWidth: 2))
-                        : const Text('Confirm Redeem', style: TextStyle(color: Colors.white)),
+                        : const Text('ยืนยันการไถ่ถอน', style: TextStyle(color: Colors.white)),
                     );
                   }
                 ),
@@ -754,13 +754,13 @@ class _AssetCardState extends State<_AssetCard> {
                     Text(widget.asset.name, style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 16)),
                     if (isPawned) ...[
                       if (isOverdue)
-                        Text('OVERDUE (${-daysUntilDue} days)', style: const TextStyle(fontSize: 12, color: Colors.red, fontWeight: FontWeight.bold))
+                        Text('ค้างชำระ (${-daysUntilDue} วัน)', style: const TextStyle(fontSize: 12, color: Colors.red, fontWeight: FontWeight.bold))
                       else
-                        Text('Due in $daysUntilDue days', style: const TextStyle(fontSize: 12, color: Colors.orange)),
+                        Text('ครบกำหนดใน $daysUntilDue วัน', style: const TextStyle(fontSize: 12, color: Colors.orange)),
                     ] else if (isScheduled) ...[
-                      const Text('Store Pickup Scheduled', style: TextStyle(fontSize: 12, color: Color(0xFF800000), fontWeight: FontWeight.bold)),
+                      const Text('นัดรับที่ร้านแล้ว', style: TextStyle(fontSize: 12, color: Color(0xFF800000), fontWeight: FontWeight.bold)),
                     ] else
-                      Text('${widget.asset.weight} Baht • Acquired ฿ ${widget.asset.acquisitionPrice.toInt()}', style: const TextStyle(fontSize: 12, color: Colors.grey)),
+                      Text('${widget.asset.weight} บาท • ราคาขณะซื้อ ฿ ${widget.asset.acquisitionPrice.toInt()}', style: const TextStyle(fontSize: 12, color: Colors.grey)),
                   ],
                 ),
               ),
@@ -768,7 +768,7 @@ class _AssetCardState extends State<_AssetCard> {
                 crossAxisAlignment: CrossAxisAlignment.end,
                 children: [
                   if (isPawned) ...[
-                    const Text('TOTAL OWED', style: TextStyle(fontSize: 10, color: Colors.grey, fontWeight: FontWeight.bold)),
+                    const Text('ยอดคงค้างทั้งหมด', style: TextStyle(fontSize: 10, color: Colors.grey, fontWeight: FontWeight.bold)),
                     Text('฿ ${totalOwed.toInt()}', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16, color: pawnColor)),
                   ] else ...[
                     Text('฿ ${currentVal.toInt()}', style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 16)),

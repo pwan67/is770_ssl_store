@@ -23,7 +23,7 @@ class _OwnerPickupsTabState extends State<OwnerPickupsTab> {
       );
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Confirmed pickup for ${apt.assetName}')),
+          SnackBar(content: Text('ยืนยันการรับสินค้า ${apt.assetName} เรียบร้อยแล้ว')),
         );
       }
     } catch (e) {
@@ -39,14 +39,14 @@ class _OwnerPickupsTabState extends State<OwnerPickupsTab> {
     showDialog(
       context: context,
       builder: (context) => AlertDialog(
-        title: const Text('Confirm Order Delivery?'),
+        title: const Text('ยืนยันการส่งมอบสินค้า?'),
         content: Text(
-          'Are you sure you want to confirm that ${apt.assetName} has been handed over to the customer?',
+          'คุณแน่ใจหรือไม่ว่าต้องการยืนยันการส่งมอบ ${apt.assetName} ให้กับลูกค้า?',
         ),
         actions: [
           TextButton(
             onPressed: () => Navigator.pop(context),
-            child: const Text('Cancel'),
+            child: const Text('ยกเลิก'),
           ),
           ElevatedButton(
             style: ElevatedButton.styleFrom(backgroundColor: Colors.green),
@@ -54,7 +54,7 @@ class _OwnerPickupsTabState extends State<OwnerPickupsTab> {
               Navigator.pop(context);
               _completePickup(apt);
             },
-            child: const Text('Confirm', style: TextStyle(color: Colors.white)),
+            child: const Text('ยืนยัน', style: TextStyle(color: Colors.white)),
           ),
         ],
       ),
@@ -86,7 +86,7 @@ class _OwnerPickupsTabState extends State<OwnerPickupsTab> {
                 Icon(Icons.inbox, size: 64, color: Colors.grey),
                 SizedBox(height: 16),
                 Text(
-                  'No Upcoming Pickups',
+                  'ไม่มีรายการนัดรับสินค้า',
                   style: TextStyle(
                     fontSize: 18,
                     color: Colors.grey,
@@ -95,7 +95,7 @@ class _OwnerPickupsTabState extends State<OwnerPickupsTab> {
                 ),
                 SizedBox(height: 8),
                 Text(
-                  'All scheduled pickups have been processed.',
+                  'รายการนัดรับทั้งหมดได้รับการจัดการเรียบร้อยแล้ว.',
                   style: TextStyle(color: Colors.grey),
                 ),
               ],
@@ -129,9 +129,9 @@ class _OwnerPickupsTabState extends State<OwnerPickupsTab> {
 
             String dateLabel;
             if (dateKey == today) {
-              dateLabel = 'Today';
+              dateLabel = 'วันนี้';
             } else if (dateKey == tomorrow) {
-              dateLabel = 'Tomorrow';
+              dateLabel = 'พรุ่งนี้';
             } else {
               dateLabel = DateFormat('EEEE, MMM d, yyyy').format(dateKey);
             }
@@ -208,7 +208,7 @@ class _OwnerPickupsTabState extends State<OwnerPickupsTab> {
                               if (isFuture) {
                                 return OutlinedButton.icon(
                                   icon: const Icon(Icons.timer_outlined, size: 18),
-                                  label: const Text('Pending'),
+                                  label: const Text('ยังไม่ถึงกำหนด'),
                                   style: OutlinedButton.styleFrom(
                                     foregroundColor: Colors.grey[600],
                                     side: BorderSide(color: Colors.grey[400]!),
@@ -217,14 +217,14 @@ class _OwnerPickupsTabState extends State<OwnerPickupsTab> {
                                     ),
                                   ),
                                   onPressed: () => ScaffoldMessenger.of(context).showSnackBar(
-                                    const SnackBar(content: Text('This pickup is scheduled for a future date.'))
+                                    const SnackBar(content: Text('รายการนี้มีกำหนดนัดรับในอนาคต'))
                                   ),
                                 );
                               }
 
                               return ElevatedButton.icon(
                                 icon: const Icon(Icons.delivery_dining, size: 18),
-                                label: const Text('Confirm Pickup'),
+                                label: const Text('ยืนยันการรับสินค้า'),
                                 style: ElevatedButton.styleFrom(
                                   backgroundColor: Colors.green,
                                   foregroundColor: Colors.white,

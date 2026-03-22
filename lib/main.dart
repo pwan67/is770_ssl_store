@@ -31,7 +31,7 @@ class MyApp extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return MaterialApp(
-      title: 'Sung Seng Lee Gold',
+      title: 'ห้างทองสุ้นเซ่งหลี',
       debugShowCheckedModeBanner: false,
       theme: ThemeData(
         useMaterial3: true,

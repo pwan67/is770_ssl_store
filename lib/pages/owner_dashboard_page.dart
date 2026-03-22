@@ -26,7 +26,7 @@ class _OwnerDashboardPageState extends State<OwnerDashboardPage> {
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
-        title: const Text('Store Owner Portal'),
+        title: const Text('ผู้บริหาร - ห้างทองสุ้นเซ่งหลี'),
         actions: [
           IconButton(
             icon: const Icon(Icons.logout),
@@ -50,19 +50,19 @@ class _OwnerDashboardPageState extends State<OwnerDashboardPage> {
         items: const [
           BottomNavigationBarItem(
             icon: Icon(Icons.dashboard),
-            label: 'Overview',
+            label: 'ภาพรวม',
           ),
           BottomNavigationBarItem(
             icon: Icon(Icons.inventory),
-            label: 'Inventory',
+            label: 'คลังสินค้า',
           ),
           BottomNavigationBarItem(
             icon: Icon(Icons.request_page),
-            label: 'Ledger',
+            label: 'สมุดบัญชี',
           ),
           BottomNavigationBarItem(
             icon: Icon(Icons.local_shipping),
-            label: 'Pickups',
+            label: 'นัดรับสินค้า',
           ),
         ],
       ),

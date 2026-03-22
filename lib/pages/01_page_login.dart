@@ -18,6 +18,8 @@ class _LoginPageState extends State<LoginPage> {
   final _lastNameController = TextEditingController();
   final _phoneController = TextEditingController();
   final _locationController = TextEditingController();
+  final _formKey = GlobalKey<FormState>();
+
 
   bool _isLogin = true;
   bool _isLoading = false;
@@ -29,19 +31,8 @@ class _LoginPageState extends State<LoginPage> {
   }
 
   Future<void> _submit() async {
-    if (!_isLogin) {
-      if (_emailController.text.trim().isEmpty ||
-          _passwordController.text.trim().isEmpty ||
-          _firstNameController.text.trim().isEmpty ||
-          _lastNameController.text.trim().isEmpty ||
-          _phoneController.text.trim().isEmpty ||
-          _locationController.text.trim().isEmpty) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('Please fill in all fields.')),
-        );
-        return;
-      }
-    }
+    if (!_formKey.currentState!.validate()) return;
+
 
     setState(() => _isLoading = true);
     try {
@@ -70,7 +61,7 @@ class _LoginPageState extends State<LoginPage> {
 
         if (_authService.isNetworkError(e)) {
           message =
-              "Network Error: Please check your internet connection or Firebase setup.";
+              "เกิดข้อผิดพลาดในการเชื่อมต่อ: กรุณาตรวจสอบการเชื่อมต่ออินเทอร์เน็ตหรือการตั้งค่า Firebase";
           bgColor = Colors.orange.shade800;
         }
 
@@ -95,7 +86,7 @@ class _LoginPageState extends State<LoginPage> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(title: Text(_isLogin ? 'Login' : 'Sign Up')),
+      appBar: AppBar(title: Text(_isLogin ? 'เข้าสู่ระบบ' : 'สมัครสมาชิก')),
       body: Center(
         child: SingleChildScrollView(
           padding: const EdgeInsets.all(24.0),
@@ -111,7 +102,7 @@ class _LoginPageState extends State<LoginPage> {
                   ScaffoldMessenger.of(context).showSnackBar(
                     const SnackBar(
                       content: Text(
-                        'Developer Bypass: Mock credentials loaded.',
+                        'Developer Bypass: โหลดข้อมูลจำลองแล้ว',
                       ),
                     ),
                   );
@@ -124,7 +115,7 @@ class _LoginPageState extends State<LoginPage> {
               ), // Gold Icon
               const SizedBox(height: 24),
               Text(
-                _isLogin ? 'Welcome Back!' : 'Join Sung Seng Lee Gold',
+                _isLogin ? 'ยินดีต้อนรับกลับ!' : 'เข้าร่วมกับ สุ้นเซ่งหลี โกลด์',
                 textAlign: TextAlign.center,
                 style: const TextStyle(
                   fontSize: 24,
@@ -134,82 +125,119 @@ class _LoginPageState extends State<LoginPage> {
               ),
               const SizedBox(height: 48),
 
-              if (!_isLogin) ...[
-                Row(
+              Form(
+                key: _formKey,
+                child: Column(
                   children: [
-                    Expanded(
-                      child: TextField(
-                        controller: _firstNameController,
+                    if (!_isLogin) ...[
+                      Row(
+                        children: [
+                          Expanded(
+                            child: TextFormField(
+                              controller: _firstNameController,
+                              decoration: InputDecoration(
+                                labelText: 'ชื่อ *',
+                                border: OutlineInputBorder(
+                                  borderRadius: BorderRadius.circular(12),
+                                ),
+                                prefixIcon: const Icon(Icons.person),
+                              ),
+                              keyboardType: TextInputType.name,
+                              textCapitalization: TextCapitalization.words,
+                              validator: (val) => val == null || val.trim().isEmpty
+                                  ? 'กรุณากรอกชื่อ'
+                                  : null,
+                            ),
+                          ),
+                          const SizedBox(width: 16),
+                          Expanded(
+                            child: TextFormField(
+                              controller: _lastNameController,
+                              decoration: InputDecoration(
+                                labelText: 'นามสกุล *',
+                                border: OutlineInputBorder(
+                                  borderRadius: BorderRadius.circular(12),
+                                ),
+                              ),
+                              keyboardType: TextInputType.name,
+                              textCapitalization: TextCapitalization.words,
+                              validator: (val) => val == null || val.trim().isEmpty
+                                  ? 'กรุณากรอกนามสกุล'
+                                  : null,
+                            ),
+                          ),
+                        ],
+                      ),
+                      const SizedBox(height: 16),
+                      TextFormField(
+                        controller: _phoneController,
+                        keyboardType: TextInputType.phone,
                         decoration: InputDecoration(
-                          labelText: 'First Name *',
+                          labelText: 'เบอร์โทรศัพท์ *',
                           border: OutlineInputBorder(
                             borderRadius: BorderRadius.circular(12),
                           ),
-                          prefixIcon: const Icon(Icons.person),
+                          prefixIcon: const Icon(Icons.phone),
                         ),
+                        validator: (val) => val == null || val.trim().isEmpty
+                            ? 'กรุณากรอกเบอร์โทรศัพท์'
+                            : null,
                       ),
+                      const SizedBox(height: 16),
+                      TextFormField(
+                        controller: _locationController,
+                        decoration: InputDecoration(
+                          labelText: 'ที่อยู่ *',
+                          border: OutlineInputBorder(
+                            borderRadius: BorderRadius.circular(12),
+                          ),
+                          prefixIcon: const Icon(Icons.location_on),
+                        ),
+                        keyboardType: TextInputType.streetAddress,
+                        validator: (val) => val == null || val.trim().isEmpty
+                            ? 'กรุณากรอกที่อยู่'
+                            : null,
+                      ),
+                      const SizedBox(height: 16),
+                    ],
+
+                    TextFormField(
+                      controller: _emailController,
+                      keyboardType: TextInputType.emailAddress,
+                      decoration: InputDecoration(
+                        labelText: 'อีเมล *',
+                        border: OutlineInputBorder(
+                          borderRadius: BorderRadius.circular(12),
+                        ),
+                        prefixIcon: const Icon(Icons.email),
+                      ),
+                      validator: (val) {
+                        if (val == null || val.trim().isEmpty) {
+                          return 'กรุณากรอกอีเมล';
+                        }
+                        if (!RegExp(r'^[\w-\.]+@([\w-]+\.)+[\w-]{2,4}$')
+                            .hasMatch(val)) {
+                          return 'รูปแบบอีเมลไม่ถูกต้อง';
+                        }
+                        return null;
+                      },
                     ),
-                    const SizedBox(width: 16),
-                    Expanded(
-                      child: TextField(
-                        controller: _lastNameController,
-                        decoration: InputDecoration(
-                          labelText: 'Last Name *',
-                          border: OutlineInputBorder(
-                            borderRadius: BorderRadius.circular(12),
-                          ),
+                    const SizedBox(height: 16),
+                    TextFormField(
+                      controller: _passwordController,
+                      obscureText: true,
+                      decoration: InputDecoration(
+                        labelText: 'รหัสผ่าน *',
+                        border: OutlineInputBorder(
+                          borderRadius: BorderRadius.circular(12),
                         ),
+                        prefixIcon: const Icon(Icons.lock),
                       ),
+                      validator: (val) => val == null || val.length < 6
+                          ? 'รหัสผ่านต้องมีอย่างน้อย 6 ตัวอักษร'
+                          : null,
                     ),
                   ],
-                ),
-                const SizedBox(height: 16),
-                TextField(
-                  controller: _phoneController,
-                  keyboardType: TextInputType.phone,
-                  decoration: InputDecoration(
-                    labelText: 'Phone Number *',
-                    border: OutlineInputBorder(
-                      borderRadius: BorderRadius.circular(12),
-                    ),
-                    prefixIcon: const Icon(Icons.phone),
-                  ),
-                ),
-                const SizedBox(height: 16),
-                TextField(
-                  controller: _locationController,
-                  decoration: InputDecoration(
-                    labelText: 'Location (Address) *',
-                    border: OutlineInputBorder(
-                      borderRadius: BorderRadius.circular(12),
-                    ),
-                    prefixIcon: const Icon(Icons.location_on),
-                  ),
-                ),
-                const SizedBox(height: 16),
-              ],
-
-              TextField(
-                controller: _emailController,
-                keyboardType: TextInputType.emailAddress,
-                decoration: InputDecoration(
-                  labelText: 'Email *',
-                  border: OutlineInputBorder(
-                    borderRadius: BorderRadius.circular(12),
-                  ),
-                  prefixIcon: const Icon(Icons.email),
-                ),
-              ),
-              const SizedBox(height: 16),
-              TextField(
-                controller: _passwordController,
-                obscureText: true,
-                decoration: InputDecoration(
-                  labelText: 'Password *',
-                  border: OutlineInputBorder(
-                    borderRadius: BorderRadius.circular(12),
-                  ),
-                  prefixIcon: const Icon(Icons.lock),
                 ),
               ),
               const SizedBox(height: 32),
@@ -227,7 +255,7 @@ class _LoginPageState extends State<LoginPage> {
                 child: _isLoading
                     ? const CircularProgressIndicator(color: Colors.white)
                     : Text(
-                        _isLogin ? 'Log In' : 'Sign Up',
+                        _isLogin ? 'เข้าสู่ระบบ' : 'สมัครสมาชิก',
                         style: const TextStyle(
                           fontSize: 18,
                           fontWeight: FontWeight.bold,
@@ -242,8 +270,8 @@ class _LoginPageState extends State<LoginPage> {
                 },
                 child: Text(
                   _isLogin
-                      ? "Don't have an account? Sign Up"
-                      : "Already have an account? Log In",
+                      ? "ยังไม่มีบัญชี? สมัครสมาชิก"
+                      : "มีบัญชีอยู่แล้ว? เข้าสู่ระบบ",
                   style: const TextStyle(color: Color(0xFF800000)),
                 ),
               ),

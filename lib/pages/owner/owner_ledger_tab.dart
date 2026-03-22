@@ -24,7 +24,7 @@ class _OwnerLedgerTabState extends State<OwnerLedgerTab> {
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
               const Text(
-                'Global Transactions Ledger',
+                'สมุดบัญชีรายการธุรกรรมทั้งหมด',
                 style: TextStyle(
                   fontSize: 24,
                   fontWeight: FontWeight.bold,
@@ -36,12 +36,14 @@ class _OwnerLedgerTabState extends State<OwnerLedgerTab> {
                 scrollDirection: Axis.horizontal,
                 child: Row(
                   children: [
-                    _buildFilterChip('All', 'all'),
-                    _buildFilterChip('Purchases', 'buy'),
-                    _buildFilterChip('Sales', 'sell'),
-                    _buildFilterChip('Pawns', 'pawn'),
-                    _buildFilterChip('Redemptions', 'redeem'),
-                    _buildFilterChip('Savings', 'savings'),
+                    _buildFilterChip('ทั้งหมด', 'all'),
+                    _buildFilterChip('รายการซื้อจากร้าน', 'buy'),
+                    _buildFilterChip('รายการขายคืน', 'sell'),
+                    _buildFilterChip('รายการจำนำ', 'pawn'),
+                    _buildFilterChip('รายการไถ่ถอน', 'redeem'),
+                    _buildFilterChip('รายการออมทอง', 'savings'),
+                    _buildFilterChip('เติมเงิน', 'deposit'),
+                    _buildFilterChip('ถอนเงิน', 'withdrawal'),
                   ],
                 ),
               ),
@@ -82,6 +84,10 @@ class _OwnerLedgerTabState extends State<OwnerLedgerTab> {
         'type',
         whereIn: ['savings_deposit', 'savings_withdraw'],
       );
+    } else if (_filter == 'deposit') {
+      query = query.where('type', isEqualTo: 'deposit');
+    } else if (_filter == 'withdrawal') {
+      query = query.where('type', isEqualTo: 'withdrawal');
     } else {
       query = query.where('type', isEqualTo: _filter);
     }
@@ -96,7 +102,7 @@ class _OwnerLedgerTabState extends State<OwnerLedgerTab> {
           return const Center(child: CircularProgressIndicator());
         }
         if (!snapshot.hasData || snapshot.data!.docs.isEmpty) {
-          return const Center(child: Text('No transactions found.'));
+          return const Center(child: Text('ไม่พบรายการธุรกรรม'));
         }
 
         final formatter = NumberFormat('#,##0.00');
@@ -129,6 +135,7 @@ class _OwnerLedgerTabState extends State<OwnerLedgerTab> {
             final amount = (data['amount'] as num?)?.toDouble() ?? 0.0;
             final email = data['userEmail'] as String? ?? 'Unknown User';
             final details = data['details'] as String? ?? '';
+            final category = data['category'] as String? ?? 'ทั่วไป';
             final timestamp = (data['timestamp'] as Timestamp?)?.toDate();
 
             IconData icon;
@@ -169,7 +176,8 @@ class _OwnerLedgerTabState extends State<OwnerLedgerTab> {
                 subtitle: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    Text('User: $email'),
+                    Text('ผู้ใช้งาน: $email'),
+                    Text('หมวดหมู่: $category'),
                     if (timestamp != null)
                       Text(
                         dateFormat.format(timestamp),
@@ -185,10 +193,10 @@ class _OwnerLedgerTabState extends State<OwnerLedgerTab> {
                   style: TextStyle(
                     fontWeight: FontWeight.bold,
                     fontSize: 16,
-                    color:
-                        (typeStr == 'buy' ||
+                    color: (typeStr == 'buy' ||
                             typeStr == 'redeem' ||
-                            typeStr == 'savings_deposit')
+                            typeStr == 'savings_deposit' ||
+                            typeStr == 'deposit')
                         ? Colors.green[700]
                         : Colors.red[700],
                   ),

@@ -8,7 +8,7 @@ class OwnerWalletsPage extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(title: const Text('Wallet Balances')),
+      appBar: AppBar(title: const Text('ยอดเงินวอลเล็ตลูกค้า')),
       body: StreamBuilder<QuerySnapshot>(
         stream: FirebaseFirestore.instance
             .collection('wallets')
@@ -18,7 +18,7 @@ class OwnerWalletsPage extends StatelessWidget {
           if (snapshot.connectionState == ConnectionState.waiting)
             return const Center(child: CircularProgressIndicator());
           if (!snapshot.hasData || snapshot.data!.docs.isEmpty)
-            return const Center(child: Text('No wallets found.'));
+            return const Center(child: Text('ไม่พบกระเป๋าเงินวอลเล็ต'));
 
           final formatter = NumberFormat('#,##0.00');
 
@@ -36,7 +36,7 @@ class OwnerWalletsPage extends StatelessWidget {
                   leading: const CircleAvatar(
                     child: Icon(Icons.account_balance_wallet),
                   ),
-                  title: Text('User ID: $uid'),
+                  title: Text('รหัสลูกค้า: $uid'),
                   trailing: Text(
                     '฿${formatter.format(balance)}',
                     style: const TextStyle(

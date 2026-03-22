@@ -16,14 +16,14 @@ class _OwnerPawnsPageState extends State<OwnerPawnsPage> {
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
-        title: const Text('Active Pawns'),
+        title: const Text('รายการรับจำนำทั้งหมด'),
         bottom: PreferredSize(
           preferredSize: const Size.fromHeight(50),
           child: SingleChildScrollView(
             scrollDirection: Axis.horizontal,
             padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
             child: Row(
-              children: ['All', 'Overdue', 'Due Soon'].map((f) {
+              children: ['ทั้งหมด', 'เกินกำหนด', 'ใกล้ครบกำหนด'].map((f) {
                 final isSelected = _filter == f;
                 return Padding(
                   padding: const EdgeInsets.only(right: 8),
@@ -70,7 +70,7 @@ class _OwnerPawnsPageState extends State<OwnerPawnsPage> {
                   return const Center(child: CircularProgressIndicator());
                 }
                 if (!txSnapshot.hasData || txSnapshot.data!.docs.isEmpty) {
-                  return const Center(child: Text('No active pawns found.'));
+                  return const Center(child: Text('ไม่พบรายการรับจำนำที่เปิดอยู่'));
                 }
                 
                 final txDocs = txSnapshot.data!.docs.toList();
@@ -99,12 +99,12 @@ class _OwnerPawnsPageState extends State<OwnerPawnsPage> {
     var filteredItems = items;
 
     // Apply Filter
-    if (_filter == 'Overdue') {
+    if (_filter == 'เกินกำหนด') {
       filteredItems = filteredItems.where((data) {
         final dueDate = data['dueDate'] as Timestamp?;
         return dueDate != null && dueDate.toDate().isBefore(now);
       }).toList();
-    } else if (_filter == 'Due Soon') {
+    } else if (_filter == 'ใกล้ครบกำหนด') {
       filteredItems = filteredItems.where((data) {
         final dueDate = data['dueDate'] as Timestamp?;
         return dueDate != null && 
@@ -121,7 +121,7 @@ class _OwnerPawnsPageState extends State<OwnerPawnsPage> {
     });
 
     if (filteredItems.isEmpty) {
-      return Center(child: Text('No $_filter pawns found.'));
+      return Center(child: Text('ไม่พบรายการรับจำนำในหมวด $_filter'));
     }
 
     final formatter = NumberFormat('#,##0.00');
@@ -141,13 +141,13 @@ class _OwnerPawnsPageState extends State<OwnerPawnsPage> {
         bool isDueSoon = dueDate != null && !isOverdue && dueDate.isBefore(soonThreshold);
 
         Color statusColor = Colors.grey;
-        String statusLabel = 'ACTIVE';
+        String statusLabel = 'ปกติ';
         if (isOverdue) {
           statusColor = Colors.red;
-          statusLabel = 'OVERDUE';
+          statusLabel = 'เกินกำหนด';
         } else if (isDueSoon) {
           statusColor = Colors.orange;
-          statusLabel = 'DUE SOON';
+          statusLabel = 'ใกล้ครบกำหนด';
         }
 
         return Card(
@@ -197,13 +197,13 @@ class _OwnerPawnsPageState extends State<OwnerPawnsPage> {
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 const SizedBox(height: 4),
-                Text('Weight: ${weight.toStringAsFixed(2)} Baht'),
+                Text('น้ำหนัก: ${weight.toStringAsFixed(2)} บาท'),
                 Text(
-                  'Pawned: ${pawnDate != null ? DateFormat('MMM dd, yyyy').format(pawnDate) : '-'}',
+                  'วันที่เริ่มจำนำ: ${pawnDate != null ? DateFormat('dd/MM/yyyy').format(pawnDate) : '-'}',
                   style: const TextStyle(fontSize: 12),
                 ),
                 Text(
-                  'Due: ${dueDate != null ? DateFormat('MMM dd, yyyy').format(dueDate) : '-'}',
+                  'วันครบกำหนด: ${dueDate != null ? DateFormat('dd/MM/yyyy').format(dueDate) : '-'}',
                   style: TextStyle(
                     fontSize: 12,
                     fontWeight: isOverdue || isDueSoon ? FontWeight.bold : FontWeight.normal,
@@ -217,7 +217,7 @@ class _OwnerPawnsPageState extends State<OwnerPawnsPage> {
               crossAxisAlignment: CrossAxisAlignment.end,
               children: [
                 const Text(
-                  'Loan Amount',
+                  'ยอดเงินกู้',
                   style: TextStyle(fontSize: 10, color: Colors.grey),
                 ),
                 Text(

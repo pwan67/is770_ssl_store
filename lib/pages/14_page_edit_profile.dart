@@ -54,7 +54,7 @@ class _EditProfilePageState extends State<EditProfilePage> {
     } catch (e) {
       if (mounted) {
         setState(() => _isLoading = false);
-        ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Failed to load profile: \$e')));
+        ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('โหลดข้อมูลโปรไฟล์ล้มเหลว: $e')));
       }
     }
   }
@@ -77,12 +77,12 @@ class _EditProfilePageState extends State<EditProfilePage> {
           _currentPhotoUrl = url;
           _isSaving = false;
         });
-        ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Profile picture updated!')));
+        ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('อัปเดตรูปโปรไฟล์สำเร็จ!')));
       }
     } catch (e) {
       if (mounted) {
         setState(() => _isSaving = false);
-        ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Failed to upload picture: \$e')));
+        ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('อัปโหลดรูปภาพล้มเหลว: $e')));
       }
     }
   }
@@ -100,13 +100,13 @@ class _EditProfilePageState extends State<EditProfilePage> {
       
       if (mounted) {
         setState(() => _isSaving = false);
-        ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Profile saved successfully!')));
+        ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('บันทึกข้อมูลส่วนตัวสำเร็จ!')));
         Navigator.pop(context); // Go back after saving
       }
     } catch (e) {
        if (mounted) {
         setState(() => _isSaving = false);
-        ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Failed to save profile: \$e')));
+        ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('บันทึกข้อมูลล้มเหลว: $e')));
       }
     }
   }
@@ -124,7 +124,7 @@ class _EditProfilePageState extends State<EditProfilePage> {
     return Scaffold(
       backgroundColor: const Color(0xFFF5F5F7),
       appBar: AppBar(
-        title: const Text('Edit Profile'),
+        title: const Text('แก้ไขข้อมูลส่วนตัว'),
         backgroundColor: const Color(0xFF800000),
         foregroundColor: Colors.white,
       ),
@@ -174,32 +174,32 @@ class _EditProfilePageState extends State<EditProfilePage> {
                   ),
                   const SizedBox(height: 48),
                   
-                  const Text('Personal Details', style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold, color: Colors.grey)),
+                  const Text('ข้อมูลส่วนตัว', style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold, color: Colors.grey)),
                   const SizedBox(height: 16),
                   
                   TextFormField(
                     controller: _firstNameController,
                     decoration: InputDecoration(
-                      labelText: 'First Name',
+                      labelText: 'ชื่อ',
                       filled: true,
                       fillColor: Colors.white,
                       border: OutlineInputBorder(borderRadius: BorderRadius.circular(12), borderSide: BorderSide.none),
                       prefixIcon: const Icon(Icons.person_outline),
                     ),
-                    validator: (val) => val == null || val.isEmpty ? 'First Name is required' : null,
+                    validator: (val) => val == null || val.isEmpty ? 'กรุณาระบุชื่อ' : null,
                   ),
                   const SizedBox(height: 16),
                   
                   TextFormField(
                     controller: _lastNameController,
                     decoration: InputDecoration(
-                      labelText: 'Last Name',
+                      labelText: 'นามสกุล',
                       filled: true,
                       fillColor: Colors.white,
                       border: OutlineInputBorder(borderRadius: BorderRadius.circular(12), borderSide: BorderSide.none),
                       prefixIcon: const Icon(Icons.person_outline),
                     ),
-                    validator: (val) => val == null || val.isEmpty ? 'Last Name is required' : null,
+                    validator: (val) => val == null || val.isEmpty ? 'กรุณาระบุนามสกุล' : null,
                   ),
                   const SizedBox(height: 16),
                   
@@ -207,13 +207,13 @@ class _EditProfilePageState extends State<EditProfilePage> {
                     controller: _phoneController,
                     keyboardType: TextInputType.phone,
                     decoration: InputDecoration(
-                      labelText: 'Mobile Phone Number',
+                      labelText: 'เบอร์โทรศัพท์มือถือ',
                       filled: true,
                       fillColor: Colors.white,
                       border: OutlineInputBorder(borderRadius: BorderRadius.circular(12), borderSide: BorderSide.none),
                       prefixIcon: const Icon(Icons.phone_outlined),
                     ),
-                    validator: (val) => val == null || val.isEmpty ? 'Phone number is required' : null,
+                    validator: (val) => val == null || val.isEmpty ? 'กรุณาระบุเบอร์โทรศัพท์' : null,
                   ),
                   const SizedBox(height: 48),
 
@@ -229,7 +229,7 @@ class _EditProfilePageState extends State<EditProfilePage> {
                       ),
                       child: _isSaving
                           ? const SizedBox(width: 24, height: 24, child: CircularProgressIndicator(color: Colors.white, strokeWidth: 2))
-                          : const Text('Save Details', style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
+                          : const Text('บันทึกข้อมูล', style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
                     ),
                   ),
                 ],

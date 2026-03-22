@@ -1,10 +1,14 @@
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'id_generator_service.dart';
+import 'wallet_service.dart';
+
 
 class AuthService {
   final FirebaseAuth _auth = FirebaseAuth.instance;
   final IdGeneratorService _idGeneratorService = IdGeneratorService();
+  final WalletService _walletService = WalletService();
+
 
   // Stream of auth state/profile changes
   Stream<User?> get user => _auth.userChanges();
@@ -81,12 +85,16 @@ class AuthService {
           'phoneNumber': phoneNumber,
           'location': location,
           'role': 'user',
+          'walletBalance': 0,
           'createdAt': FieldValue.serverTimestamp(),
           'lastSeen': FieldValue.serverTimestamp(),
         });
         
         // Also update the local FirebaseAuth user profile with the display name
         await credential.user!.updateDisplayName('$firstName $lastName'.trim());
+
+        // Ensure wallet document exists in 'wallets' collection
+        await _walletService.createWalletForUser(credential.user!.uid);
       }
       
       return credential;
@@ -160,9 +168,13 @@ class AuthService {
         'email': user.email,
         'lastSeen': FieldValue.serverTimestamp(),
         'role': intendedRole, 
+        'walletBalance': 0,
         'createdAt': FieldValue.serverTimestamp(),
       }, SetOptions(merge: true));
       print('DEBUG: Created new $intendedRole document: $customId');
+
+      // Ensure wallet document exists in 'wallets' collection
+      await _walletService.createWalletForUser(user.uid);
     }
   }
 

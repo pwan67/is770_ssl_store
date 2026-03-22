@@ -7,7 +7,7 @@ class HelpSupportPage extends StatelessWidget {
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
-        title: const Text('Help & Support'),
+        title: const Text('ความช่วยเหลือและติดต่อเรา'),
       ),
       backgroundColor: const Color(0xFFF5F5F7),
       body: SingleChildScrollView(
@@ -18,7 +18,7 @@ class HelpSupportPage extends StatelessWidget {
             const Padding(
               padding: EdgeInsets.only(left: 8, bottom: 12),
               child: Text(
-                'CONTACT US',
+                'ติดต่อเรา',
                 style: TextStyle(
                     fontSize: 13,
                     fontWeight: FontWeight.bold,
@@ -42,7 +42,7 @@ class HelpSupportPage extends StatelessWidget {
                   ListTile(
                     onTap: () {
                       ScaffoldMessenger.of(context).showSnackBar(
-                          const SnackBar(content: Text('Opening Phone...')));
+                          const SnackBar(content: Text('กำลังเปิดแอปโทรศัพท์...')));
                     },
                     contentPadding:
                         const EdgeInsets.symmetric(horizontal: 20, vertical: 8),
@@ -54,7 +54,7 @@ class HelpSupportPage extends StatelessWidget {
                       ),
                       child: const Icon(Icons.phone, color: Color(0xFF800000)),
                     ),
-                    title: const Text('Call Support',
+                    title: const Text('โทรสอบถาม',
                         style: TextStyle(
                             fontWeight: FontWeight.bold, fontSize: 16)),
                     subtitle: const Text('+66 2 123 4567',
@@ -70,7 +70,7 @@ class HelpSupportPage extends StatelessWidget {
                   ListTile(
                     onTap: () {
                       ScaffoldMessenger.of(context).showSnackBar(
-                          const SnackBar(content: Text('Opening LINE...')));
+                          const SnackBar(content: Text('กำลังเปิดแอป LINE...')));
                     },
                     contentPadding:
                         const EdgeInsets.symmetric(horizontal: 20, vertical: 8),
@@ -83,7 +83,7 @@ class HelpSupportPage extends StatelessWidget {
                       child: const Icon(Icons.chat_bubble,
                           color: Color(0xFF06C755)),
                     ),
-                    title: const Text('LINE Official',
+                    title: const Text('LINE ทางการ',
                         style: TextStyle(
                             fontWeight: FontWeight.bold, fontSize: 16)),
                     subtitle: const Text('@sungsengleegold',
@@ -98,7 +98,7 @@ class HelpSupportPage extends StatelessWidget {
             const Padding(
               padding: EdgeInsets.only(left: 8, bottom: 12),
               child: Text(
-                'FREQUENTLY ASKED QUESTIONS',
+                'คำถามที่พบบ่อย (FAQ)',
                 style: TextStyle(
                     fontSize: 13,
                     fontWeight: FontWeight.bold,
@@ -120,42 +120,42 @@ class HelpSupportPage extends StatelessWidget {
               child: const Column(
                 children: [
                   ExpansionTile(
-                    title: Text('How do I buy gold online?'),
+                    title: Text('ซื้อทองออนไลน์ได้อย่างไร?'),
                     children: [
                       Padding(
                         padding: EdgeInsets.all(16.0),
                         child: Text(
-                            'To buy gold online, navigate to the "Buy / Sell" tab, select "Buy Gold", enter the amount in Baht weight or THB, confirm your transaction limit, and click Buy. Ensure you have sufficient funds in your wallet first.'),
+                            'คุณสามารถซื้อทองออนไลน์ได้โดยไปที่เมนู "ซื้อ / ขาย", เลือก "ซื้อทอง", ระบุจำนวนที่ต้องการ (เป็นบาท หรือ บาทเงินสด), ตรวจสอบยอดและยืนยันรายการ กรุณาตรวจสอบให้แน่ใจว่าคุณมีเงินเพียงพอในวอลเล็ตก่อนทำรายการ'),
                       ),
                     ],
                   ),
                   ExpansionTile(
-                    title: Text('How do I pick up my gold?'),
+                    title: Text('จะมารับทองที่หน้าร้านต้องทำอย่างไร?'),
                     children: [
                       Padding(
                         padding: EdgeInsets.all(16.0),
                         child: Text(
-                            'You can schedule a pickup from your Profile > My Appointments. Select a date and time slot. When you arrive at the store, show your appointment QR code (or transaction ID) to the staff.'),
+                            'คุณสามารถนัดหมายการรับทองได้ที่เมนู โปรไฟล์ > รายการนัดหมายของฉัน เลือกวันและเวลาที่สะดวก เมื่อมาถึงหน้าร้าน กรุณาแสดง QR Code นัดหมายหรือเลขที่รายการต่อพนักงาน'),
                       ),
                     ],
                   ),
                   ExpansionTile(
-                    title: Text('What are your store hours?'),
+                    title: Text('เวลาทำการของร้านคือช่วงใด?'),
                     children: [
                       Padding(
                         padding: EdgeInsets.all(16.0),
                         child: Text(
-                            'We are open Monday to Saturday from 9:00 AM to 5:30 PM. We are closed on Sundays and national holidays.'),
+                            'เราเปิดให้บริการวันจันทร์ถึงวันเสาร์ เวลา 9:00 น. ถึง 17:30 น. และปิดทำการในวันอาทิตย์และวันหยุดนักขัตฤกษ์'),
                       ),
                     ],
                   ),
                   ExpansionTile(
-                    title: Text('How does the pawn system work?'),
+                    title: Text('ระบบการจำนำทองทำงานอย่างไร?'),
                     children: [
                       Padding(
                         padding: EdgeInsets.all(16.0),
                         child: Text(
-                            'If you own gold in your portfolio, you can instantly pawn it through the app for up to 85% of its buyback value. The loan amount is credited straight to your digital wallet with an interest rate of 1.25% per month.'),
+                            'หากคุณมีทองคำในพอร์ตการลงทุน คุณสามารถนำมาจำนำผ่านแอปได้ทันที โดยจะได้รับเงินสูงสุด 85% ของราคารับซื้อในขณะนั้น เงินกู้จะโอนเข้าวอลเล็ตของคุณโดยตรง พร้อมอัตราดอกเบี้ย 1.25% ต่อเดือน'),
                       ),
                     ],
                   ),
@@ -166,7 +166,7 @@ class HelpSupportPage extends StatelessWidget {
             const Padding(
               padding: EdgeInsets.only(left: 8, bottom: 12),
               child: Text(
-                'LEGAL',
+                'ข้อมูลทางกฎหมาย',
                 style: TextStyle(
                     fontSize: 13,
                     fontWeight: FontWeight.bold,
@@ -186,19 +186,19 @@ class HelpSupportPage extends StatelessWidget {
                 children: [
                    ListTile(
                     onTap: () {
-                      ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Opening Terms of Service...')));
+                      ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('กำลังเปิดหน้าเงื่อนไขการใช้บริการ...')));
                     },
                     contentPadding: const EdgeInsets.symmetric(horizontal: 20, vertical: 8),
-                    title: const Text('Terms of Service', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16)),
+                    title: const Text('เงื่อนไขการใช้บริการ', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16)),
                     trailing: const Icon(Icons.open_in_new, color: Colors.grey, size: 20),
                   ),
                    const Divider(height: 1, indent: 20, thickness: 1, color: Color(0xFFF0F0F0)),
                    ListTile(
                     onTap: () {
-                      ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Opening Privacy Policy...')));
+                      ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('กำลังเปิดหน้านโยบายความเป็นส่วนตัว...')));
                     },
                     contentPadding: const EdgeInsets.symmetric(horizontal: 20, vertical: 8),
-                     title: const Text('Privacy Policy', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16)),
+                     title: const Text('นโยบายความเป็นส่วนตัว', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16)),
                      trailing: const Icon(Icons.open_in_new, color: Colors.grey, size: 20),
                   ),
                 ],

@@ -42,28 +42,28 @@ class _HomePageState extends State<HomePage> {
   Widget build(BuildContext context) {
     final menuItems = [
       {
-        'title': 'Buy Gold from Store\nซื้อทองจากร้าน',
+        'title': 'ซื้อทองจากร้าน',
         'icon': Icons.shopping_bag_outlined,
         'page': const BuySelectionPage(),
         'color': const Color(0xFFE3F2FD),
         'iconColor': const Color(0xFF1976D2),
       },
       {
-        'title': 'Sell Gold to Store\nขายทองคืนร้าน',
+        'title': 'ขายทองคืนร้าน',
         'icon': Icons.sell_outlined,
         'page': const TradingPage(initialTabIndex: 1),
         'color': const Color(0xFFE8F5E9),
         'iconColor': const Color(0xFF388E3C),
       },
       {
-        'title': 'Pawn Gold with Store\nจำนำทองกับร้าน',
+        'title': 'จำนำทองกับร้าน',
         'icon': Icons.account_balance_outlined,
         'page': const TradingPage(initialTabIndex: 2),
         'color': const Color(0xFFFFF3E0),
         'iconColor': const Color(0xFFF57C00),
       },
       {
-        'title': 'Save Gold with Store\nออมทองกับร้าน',
+        'title': 'ออมทองกับร้าน',
         'icon': Icons.savings_outlined,
         'page': const GoldSavingsPage(),
         'color': const Color(0xFFF3E5F5),
@@ -73,7 +73,7 @@ class _HomePageState extends State<HomePage> {
 
     return Scaffold(
       appBar: AppBar(
-        title: const Text('Sung Seng Lee Gold'),
+        title: const Text('ห้างทองสุ้นเซ่งหลี'),
         centerTitle: true,
         actions: [
           StreamBuilder<List<NotificationItem>>(
@@ -154,7 +154,7 @@ class _HomePageState extends State<HomePage> {
               const SizedBox(height: 24),
 
               const Text(
-                'Menu',
+                'เมนู',
                 style: TextStyle(
                   fontSize: 20,
                   fontWeight: FontWeight.bold,
@@ -184,7 +184,7 @@ class _HomePageState extends State<HomePage> {
                           SnackBar(
                             backgroundColor: const Color(0xFF800000),
                             content: Text(
-                              'Function ${item['title']} coming soon!',
+                              'ฟังก์ชัน ${item['title']} กำลังปรับปรุงเร็วๆ นี้!',
                             ),
                           ),
                         );
@@ -263,7 +263,7 @@ class _HomePageState extends State<HomePage> {
               const Padding(
                 padding: EdgeInsets.symmetric(horizontal: 4.0),
                 child: Text(
-                  'News & Insights',
+                  'ข่าวสารและสาระน่ารู้',
                   style: TextStyle(
                     fontSize: 20,
                     fontWeight: FontWeight.bold,
@@ -285,7 +285,7 @@ class _HomePageState extends State<HomePage> {
                   if (newsList.isEmpty) {
                     return const Padding(
                       padding: EdgeInsets.all(16.0),
-                      child: Text('No news available at the moment.'),
+                      child: Text('ไม่มีข่าวสารในขณะนี้'),
                     );
                   }
 
@@ -299,7 +299,7 @@ class _HomePageState extends State<HomePage> {
                         onTap: () {
                           ScaffoldMessenger.of(context).showSnackBar(
                             SnackBar(
-                              content: Text('Reading: ${newsList[index].title}'),
+                              content: Text('กำลังอ่าน: ${newsList[index].title}'),
                             ), 
                           );
                         },
@@ -313,7 +313,7 @@ class _HomePageState extends State<HomePage> {
               const Padding(
                 padding: EdgeInsets.symmetric(horizontal: 4.0),
                 child: Text(
-                  'Our Location',
+                  'ที่ตั้งร้านของเรา',
                   style: TextStyle(
                     fontSize: 20,
                     fontWeight: FontWeight.bold,
@@ -334,13 +334,13 @@ class _HomePageState extends State<HomePage> {
         // Set Chat with Us Line at the bottom right
         onPressed: () {
           ScaffoldMessenger.of(context).showSnackBar(
-            const SnackBar(content: Text('Opening LINE Official Account...')),
+            const SnackBar(content: Text('กำลังเปิด LINE Official Account...')),
           );
         },
         backgroundColor: const Color(0xFF06C755), // LINE Green
         icon: const Icon(Icons.chat_bubble, color: Colors.white),
         label: const Text(
-          'Chat with us',
+          'พูดคุยกับเรา',
           style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold),
         ),
       ),

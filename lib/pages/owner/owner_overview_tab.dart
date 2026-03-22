@@ -100,7 +100,7 @@ class _OwnerOverviewTabState extends State<OwnerOverviewTab> {
 
   @override
   Widget build(BuildContext context) {
-    String dateRangeText = 'All Time';
+    String dateRangeText = 'ทั้งหมด';
     if (_selectedDateRange != null) {
       dateRangeText =
           '${DateFormat('MMM d, yyyy').format(_selectedDateRange!.start)} - ${DateFormat('MMM d, yyyy').format(_selectedDateRange!.end)}';
@@ -115,7 +115,7 @@ class _OwnerOverviewTabState extends State<OwnerOverviewTab> {
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
               const Text(
-                'Overview',
+                'ภาพรวมธุรกิจ',
                 style: TextStyle(
                   fontSize: 28,
                   fontWeight: FontWeight.bold,
@@ -159,7 +159,7 @@ class _OwnerOverviewTabState extends State<OwnerOverviewTab> {
           _buildMetricsGrid(context),
           const SizedBox(height: 32),
           const Text(
-            'Recent Global Activity',
+            'ความเคลื่อนไหวล่าสุด',
             style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold),
           ),
           const SizedBox(height: 12),
@@ -177,7 +177,7 @@ class _OwnerOverviewTabState extends State<OwnerOverviewTab> {
       children: [
         // --- HERO SECTION (Critical KPIs) ---
         const Text(
-          'Business Performance',
+          'สรุปผลประกอบการ',
           style: TextStyle(
             fontSize: 20,
             fontWeight: FontWeight.bold,
@@ -191,7 +191,7 @@ class _OwnerOverviewTabState extends State<OwnerOverviewTab> {
             children: [
               Expanded(
                 child: _MetricCard(
-                  title: 'Profit',
+                  title: 'กำไร',
                   icon: Icons.trending_up,
                   color: const Color(0xFF2E7D32),
                   isHero: true,
@@ -219,7 +219,7 @@ class _OwnerOverviewTabState extends State<OwnerOverviewTab> {
               const SizedBox(width: 12),
               Expanded(
                 child: _MetricCard(
-                  title: 'Revenue',
+                  title: 'รายได้',
                   icon: Icons.monetization_on,
                   color: const Color(0xFF1A237E),
                   isHero: true,
@@ -259,7 +259,7 @@ class _OwnerOverviewTabState extends State<OwnerOverviewTab> {
               const SizedBox(width: 12),
               Expanded(
                 child: _MetricCard(
-                  title: 'Cost',
+                  title: 'เงินต้น/ทุน',
                   icon: Icons.payments,
                   color: const Color(0xFFC62828),
                   isHero: true,
@@ -292,7 +292,7 @@ class _OwnerOverviewTabState extends State<OwnerOverviewTab> {
         // --- TRANSACTION ACTIVITY ---
         const SizedBox(height: 32),
         const Text(
-          'Transaction Activity',
+          'กิจกรรมรายการ',
           style: TextStyle(
             fontSize: 20,
             fontWeight: FontWeight.bold,
@@ -309,7 +309,7 @@ class _OwnerOverviewTabState extends State<OwnerOverviewTab> {
           childAspectRatio: 1.7,
           children: [
             _MetricCard(
-              title: 'Buy Transactions',
+              title: 'รายการซื้อ',
               icon: Icons.shopping_bag,
               color: const Color(0xFF1976D2),
               onTap: () => Navigator.push(
@@ -321,7 +321,7 @@ class _OwnerOverviewTabState extends State<OwnerOverviewTab> {
               stream: _getTypeCountStream(['buy']).map((c) => c.toString()),
             ),
             _MetricCard(
-              title: 'Sell Transactions',
+              title: 'รายการขาย',
               icon: Icons.storefront,
               color: const Color(0xFFC62828),
               onTap: () => Navigator.push(
@@ -333,7 +333,7 @@ class _OwnerOverviewTabState extends State<OwnerOverviewTab> {
               stream: _getTypeCountStream(['sell']).map((c) => c.toString()),
             ),
             _MetricCard(
-              title: 'Pawn Transactions',
+              title: 'รายการจำนำ',
               icon: Icons.real_estate_agent,
               color: const Color(0xFFE65100),
               onTap: () => Navigator.push(
@@ -342,13 +342,13 @@ class _OwnerOverviewTabState extends State<OwnerOverviewTab> {
               ),
               stream: _getTypeCountStream(['pawn']).map((c) => c.toString()),
               subtitleStream: _getPawnStatsStream().map((stats) {
-                if (stats['overdue']! > 0) return '${stats['overdue']} Overdue';
-                if (stats['dueSoon']! > 0) return '${stats['dueSoon']} Due Soon';
-                return 'All Healthy';
+                if (stats['overdue']! > 0) return '${stats['overdue']} ค้างชำระ';
+                if (stats['dueSoon']! > 0) return '${stats['dueSoon']} ใกล้ครบกำหนด';
+                return 'สถานะปกติ';
               }),
             ),
             _MetricCard(
-              title: 'Save Transactions',
+              title: 'รายการออมทอง',
               icon: Icons.savings,
               color: const Color(0xFF00695C),
               onTap: () => Navigator.push(
@@ -365,7 +365,7 @@ class _OwnerOverviewTabState extends State<OwnerOverviewTab> {
         // --- STORE EQUITY ---
         const SizedBox(height: 32),
         const Text(
-          'Store Equity & Assets',
+          'สินทรัพย์และเงินหมุนเวียน',
           style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold),
         ),
         const SizedBox(height: 12),
@@ -378,7 +378,7 @@ class _OwnerOverviewTabState extends State<OwnerOverviewTab> {
           childAspectRatio: 1.7,
           children: [
             _MetricCard(
-              title: 'Wallet Balances',
+              title: 'ยอดเงินในวอลเล็ตลูกค้า',
               icon: Icons.account_balance_wallet,
               color: const Color(0xFF6A1B9A),
               onTap: () => Navigator.push(
@@ -397,7 +397,7 @@ class _OwnerOverviewTabState extends State<OwnerOverviewTab> {
               }),
             ),
             _MetricCard(
-              title: 'Inventory Value',
+              title: 'มูลค่าสต็อก (ราคาขาย)',
               icon: Icons.auto_graph,
               color: const Color(0xFFEF6C00),
               onTap: () => Navigator.push(
@@ -426,7 +426,7 @@ class _OwnerOverviewTabState extends State<OwnerOverviewTab> {
               }),
             ),
             _MetricCard(
-              title: 'Stock Investment',
+              title: 'เงินลงทุนในสต็อก',
               icon: Icons.inventory,
               color: const Color(0xFF4E342E),
               onTap: () => Navigator.push(
@@ -450,7 +450,7 @@ class _OwnerOverviewTabState extends State<OwnerOverviewTab> {
               }),
             ),
             _MetricCard(
-              title: 'Product Types',
+              title: 'ประเภทสินค้า',
               icon: Icons.inventory_2,
               color: const Color(0xFF2E7D32),
               onTap: () => Navigator.push(
@@ -469,7 +469,7 @@ class _OwnerOverviewTabState extends State<OwnerOverviewTab> {
         // --- LIABILITIES ---
         const SizedBox(height: 32),
         const Text(
-          'Store Liabilities',
+          'หนี้สิน/ภาระผูกพัน',
           style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold),
         ),
         const SizedBox(height: 12),
@@ -482,7 +482,7 @@ class _OwnerOverviewTabState extends State<OwnerOverviewTab> {
           childAspectRatio: 1.7,
           children: [
             _MetricCard(
-              title: 'Active Pawns',
+              title: 'ทองรับจำนำ (ใช้งาน)',
               icon: Icons.real_estate_agent,
               color: const Color(0xFFE65100),
               onTap: () => Navigator.push(
@@ -497,7 +497,7 @@ class _OwnerOverviewTabState extends State<OwnerOverviewTab> {
               }),
             ),
             _MetricCard(
-              title: 'Savings Liability',
+              title: 'หนี้สินออมทอง',
               icon: Icons.savings,
               color: const Color(0xFF00695C),
               onTap: () => Navigator.push(
@@ -550,7 +550,7 @@ class _OwnerOverviewTabState extends State<OwnerOverviewTab> {
           return const Center(child: CircularProgressIndicator());
         }
         if (!snapshot.hasData || snapshot.data!.docs.isEmpty) {
-          return const Center(child: Text('No recent activity found.'));
+          return const Center(child: Text('ไม่พบกิจกรรมล่าสุด'));
         }
 
         final formatter = NumberFormat('#,##0.00');

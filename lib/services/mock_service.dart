@@ -14,8 +14,6 @@ import '../models/appointment.dart';
 import '../models/notification_item.dart';
 import '../models/gold_savings.dart';
 
-import 'package:firebase_auth/firebase_auth.dart';
-import 'package:firebase_storage/firebase_storage.dart';
 import 'wallet_service.dart';
 import 'id_generator_service.dart';
 import '../models/wallet_transaction.dart';
@@ -45,43 +43,41 @@ class MockService {
     return query.docs.first.reference;
   }
 
-
-
   Future<void> _generateInitialNews() async {
     final batch = FirebaseFirestore.instance.batch();
     final newsList = [
       {
-        'title': 'Why Gold is the Best Safe Haven Asset?',
+        'title': 'ทำไมทองคำถึงเป็นสินทรัพย์ปลอดภัยที่ควรมี?',
         'summary':
-            'In times of economic uncertainty, gold is the answer. Maintain your wealth value...',
+            'ในสภาวะเศรษฐกิจผันผวน ทองคำคือคำตอบของการรักษาความมั่งคั่ง...',
         'imageUrl':
             'https://via.placeholder.com/150x150/FFD700/000000?text=Safe+Haven',
         'date': Timestamp.fromDate(
           DateTime.now().subtract(const Duration(days: 1)),
         ),
-        'content': 'Full article content about safe haven...',
+        'content': 'เนื้อหาฉบับเต็มเกี่ยวกับทองคำที่เป็นสินทรัพย์ปลอดภัย...',
       },
       {
-        'title': 'Gold Price Analysis: Upward Trend continues',
+        'title': 'วิเคราะห์ราคาทอง: แนวโน้มขาขึ้นยังคงดำเนินต่อไป',
         'summary':
-            'Experts predict continued growth for gold prices this quarter due to global factors.',
+            'ผู้เชี่ยวชาญคาดการณ์ราคาทองคำจะเติบโตอย่างต่อเนื่องในไตรมาสนี้จากปัจจัยระดับโลก',
         'imageUrl':
             'https://via.placeholder.com/150x150/800000/FFFFFF?text=Price+Up',
         'date': Timestamp.fromDate(
           DateTime.now().subtract(const Duration(days: 3)),
         ),
-        'content': 'Full analysis content...',
+        'content': 'บทวิเคราะห์ราคาทองคำเชิงลึก...',
       },
       {
-        'title': 'Understanding 96.5% vs 99.99% Gold',
+        'title': 'เข้าใจความแตกต่าง: ทอง 96.5% vs 99.99%',
         'summary':
-            'What is the difference and which one is right for investment? Let us explain.',
+            'ความแตกต่างคืออะไร และแบบไหนที่เหมาะกับการลงทุนของคุณ? เรามีคำตอบ',
         'imageUrl':
             'https://via.placeholder.com/150x150/FFA000/000000?text=Gold+Standard',
         'date': Timestamp.fromDate(
           DateTime.now().subtract(const Duration(days: 5)),
         ),
-        'content': 'Full educational content...',
+        'content': 'เนื้อหาให้ความรู้เกี่ยวกับมาตรฐานทองคำ...',
       },
     ];
 
@@ -127,21 +123,21 @@ class MockService {
     final batch = FirebaseFirestore.instance.batch();
     final promos = [
       {
-        'title': '50% Off Labor Fee\nApp Launch Special',
+        'title': 'ลดค่ากำเหน็จ 50%\nฉลองเปิดตัวแอปพลิเคชัน',
         'color': 0xFF800000,
         'textColor': 0xFFFFFFFF,
         'image':
             'https://via.placeholder.com/600x200/800000/FFFFFF?text=50%25+OFF',
       },
       {
-        'title': 'Golden Dragon Collection\nLunar New Year',
+        'title': 'คอลเลกชันมังกรทอง\nรับตรุษจีน',
         'color': 0xFFFFD700,
         'textColor': 0xFF000000,
         'image':
             'https://via.placeholder.com/600x200/FFD700/000000?text=Dragon+Collection',
       },
       {
-        'title': 'Easy Gold Savings\nStart at 100 THB',
+        'title': 'ออมทองง่ายๆ\nเริ่มต้นเพียง 100 บาท',
         'color': 0xFF1E88E5,
         'textColor': 0xFFFFFFFF,
         'image':
@@ -192,22 +188,13 @@ class MockService {
         .map((snapshot) {
           if (!snapshot.exists || snapshot.data() == null) {
             final now = DateTime.now();
-            int hour = now.hour;
-            String period = 'AM';
-            if (hour >= 12) {
-              period = 'PM';
-              if (hour > 12) hour -= 12;
-            }
-            if (hour == 0) hour = 12;
             String formattedTime =
-                '$hour:${now.minute.toString().padLeft(2, '0')} $period';
+                '${now.hour}:${now.minute.toString().padLeft(2, '0')} น.';
 
             return GoldRate(
               buyPrice: 40000.0,
               sellPrice: 40100.0,
               timestamp: now,
-              updateTime: formattedTime,
-              trend: 'stable',
             );
           }
 
@@ -219,23 +206,10 @@ class MockService {
           final trend = data['trend'] as String? ?? 'stable';
           final dateTime = ts?.toDate() ?? DateTime.now();
 
-          int hour = dateTime.hour;
-          String period = 'AM';
-          if (hour >= 12) {
-            period = 'PM';
-            if (hour > 12) hour -= 12;
-          }
-          if (hour == 0) hour = 12;
-
-          final formattedTimeStr =
-              '$hour:${dateTime.minute.toString().padLeft(2, '0')} $period';
-
           return GoldRate(
             buyPrice: buy,
             sellPrice: sell,
             timestamp: dateTime,
-            updateTime: formattedTimeStr,
-            trend: trend,
           );
         });
   }
@@ -273,18 +247,44 @@ class MockService {
       description: 'Wallet Top-Up',
     );
 
+    // Record in global transactions collection
+    final id = await _idGeneratorService.generateId(
+      'transactions',
+      prefixOverride: 'TOP',
+    );
+    String displayName = 'Unknown User';
+    try {
+      final userProfile = await getUserProfile();
+      if (userProfile['firstName'] != null && userProfile['lastName'] != null) {
+        displayName = '${userProfile['firstName']} ${userProfile['lastName']}';
+      }
+    } catch (e) {
+      print('DEBUG: Profile retrieval failed for transaction record: $e');
+    }
+
+    await FirebaseFirestore.instance
+        .collection('transactions')
+        .doc('t$id')
+        .set({
+          'type': 'deposit',
+          'amount': amount,
+          'userId': uid,
+          'userEmail': FirebaseAuth.instance.currentUser?.email ?? 'Unknown',
+          'userDisplayName': displayName,
+          'category': 'Wallet',
+          'timestamp': FieldValue.serverTimestamp(),
+          'details': 'เติมเงินเข้าวอลเล็ต (Top-Up)',
+        });
+
     // Add a notification
     final notifId = DateTime.now().millisecondsSinceEpoch.toString();
     final userRef = await _getUserDocRef(uid);
-    final notifRef = userRef
-        .collection('notifications')
-        .doc('n_$notifId');
+    final notifRef = userRef.collection('notifications').doc('n_$notifId');
     final formatter = NumberFormat('#,##0.00');
     final notif = NotificationItem(
       id: notifId,
-      title: 'Wallet Top-Up',
-      message:
-          'Successfully deposited ฿${formatter.format(amount)} into your wallet.',
+      title: 'เติมเงินเข้าวอลเล็ต',
+      message: 'เติมเงินเข้าวอลเล็ตสำเร็จ จำนวน ฿${formatter.format(amount)}',
       type: 'store',
       timestamp: DateTime.now(),
       isRead: false,
@@ -311,18 +311,44 @@ class MockService {
       description: 'Wallet Withdrawal',
     );
 
+    // Record in global transactions collection
+    final id = await _idGeneratorService.generateId(
+      'transactions',
+      prefixOverride: 'WDL',
+    );
+    String displayName = 'Unknown User';
+    try {
+      final userProfile = await getUserProfile();
+      if (userProfile['firstName'] != null && userProfile['lastName'] != null) {
+        displayName = '${userProfile['firstName']} ${userProfile['lastName']}';
+      }
+    } catch (e) {
+      print('DEBUG: Profile retrieval failed for transaction record: $e');
+    }
+
+    await FirebaseFirestore.instance
+        .collection('transactions')
+        .doc('t$id')
+        .set({
+          'type': 'withdrawal',
+          'amount': amount,
+          'userId': uid,
+          'userEmail': FirebaseAuth.instance.currentUser?.email ?? 'Unknown',
+          'userDisplayName': displayName,
+          'category': 'Wallet',
+          'timestamp': FieldValue.serverTimestamp(),
+          'details': 'ถอนเงินจากวอลเล็ต (Withdrawal)',
+        });
+
     // Add a notification
     final notifId = DateTime.now().millisecondsSinceEpoch.toString();
     final userRef = await _getUserDocRef(uid);
-    final notifRef = userRef
-        .collection('notifications')
-        .doc('n_$notifId');
+    final notifRef = userRef.collection('notifications').doc('n_$notifId');
     final formatter = NumberFormat('#,##0.00');
     final notif = NotificationItem(
       id: notifId,
-      title: 'Wallet Withdrawal',
-      message:
-          'Successfully withdrew ฿${formatter.format(amount)} from your wallet.',
+      title: 'ถอนเงินจากวอลเล็ต',
+      message: 'ถอนเงินจากวอลเล็ตสำเร็จ จำนวน ฿${formatter.format(amount)}',
       type: 'store',
       timestamp: DateTime.now(),
       isRead: false,
@@ -377,9 +403,7 @@ class MockService {
     final url = await uploadTask.ref.getDownloadURL();
 
     final userRef = await _getUserDocRef(uid);
-    await userRef.set({
-      'photoUrl': url,
-    }, SetOptions(merge: true));
+    await userRef.set({'photoUrl': url}, SetOptions(merge: true));
 
     final user = FirebaseAuth.instance.currentUser;
     if (user != null) {
@@ -393,34 +417,33 @@ class MockService {
     if (uid == null) return Stream.value([]);
 
     final userRefFuture = _getUserDocRef(uid);
-    
+
     return Stream.fromFuture(userRefFuture).asyncExpand((userRef) {
       return userRef.collection('assets').snapshots().map((snapshot) {
-          return snapshot.docs.map((doc) {
-            final data = doc.data();
-            return GoldAsset(
-              id: doc.id,
-              name: data['name'] ?? 'Unknown Asset',
-              weight: (data['weight'] ?? 0 as num).toDouble(),
-              category: data['category'] ?? 'General',
-              acquisitionDate:
-                  (data['acquisitionDate'] as Timestamp?)?.toDate() ??
-                  DateTime.now(),
-              acquisitionPrice: (data['acquisitionPrice'] ?? 0 as num)
-                  .toDouble(),
-              status: data['status'] ?? 'owned',
-              loanAmount: data['loanAmount'] != null
-                  ? (data['loanAmount'] as num).toDouble()
-                  : null,
-              pawnDate: (data['pawnDate'] as Timestamp?)?.toDate(),
-              dueDate: (data['dueDate'] as Timestamp?)?.toDate(),
-              interestRate: data['interestRate'] != null
-                  ? (data['interestRate'] as num).toDouble()
-                  : null,
-              purity: (data['purity'] ?? 0.965 as num).toDouble(),
-            );
-          }).toList();
-        });
+        return snapshot.docs.map((doc) {
+          final data = doc.data();
+          return GoldAsset(
+            id: doc.id,
+            name: data['name'] ?? 'Unknown Asset',
+            weight: (data['weight'] ?? 0 as num).toDouble(),
+            category: data['category'] ?? 'General',
+            acquisitionDate:
+                (data['acquisitionDate'] as Timestamp?)?.toDate() ??
+                DateTime.now(),
+            acquisitionPrice: (data['acquisitionPrice'] ?? 0 as num).toDouble(),
+            status: data['status'] ?? 'owned',
+            loanAmount: data['loanAmount'] != null
+                ? (data['loanAmount'] as num).toDouble()
+                : null,
+            pawnDate: (data['pawnDate'] as Timestamp?)?.toDate(),
+            dueDate: (data['dueDate'] as Timestamp?)?.toDate(),
+            interestRate: data['interestRate'] != null
+                ? (data['interestRate'] as num).toDouble()
+                : null,
+            purity: (data['purity'] ?? 0.965 as num).toDouble(),
+          );
+        }).toList();
+      });
     });
   }
 
@@ -477,45 +500,47 @@ class MockService {
     });
   }
 
-  Future<void> _generateInitialNotifications(CollectionReference collection) async {
+  Future<void> _generateInitialNotifications(
+    CollectionReference collection,
+  ) async {
     final batch = FirebaseFirestore.instance.batch();
     final notifs = [
       NotificationItem(
         id: 'n1',
-        title: 'Pawn Expiring Soon',
-        message: 'Your pawn asset "Gold Chain 1 Baht" expires in 3 days.',
+        title: 'รายการจำนำใกล้ครบกำหนด',
+        message: 'รายการทองจำนำของคุณ "สร้อยคอทองคำ 1 บาท" จะครบกำหนดใน 3 วัน',
         type: 'pawn',
         timestamp: DateTime.now().subtract(const Duration(minutes: 5)),
         isRead: false,
       ),
       NotificationItem(
         id: 'n2',
-        title: 'Item in Cart',
-        message: 'You left a 1 Baht Gold Bar in your cart!',
+        title: 'มีสินค้าในตะกร้า',
+        message: 'คุณมีทองคำแท่ง 1 บาท ตกค้างในตะกร้าสินค้า!',
         type: 'cart',
         timestamp: DateTime.now().subtract(const Duration(hours: 2)),
         isRead: false,
       ),
       NotificationItem(
         id: 'n3',
-        title: 'Emergency Store Update',
-        message: 'Notice: Store closed today due to heavy flooding.',
+        title: 'แจ้งเตือนจากทางร้าน',
+        message: 'ประกาศ: วันนี้ร้านปิดเนื่องจากสถานการณ์น้ำท่วมใหญ่',
         type: 'store',
         timestamp: DateTime.now().subtract(const Duration(days: 1)),
         isRead: false,
       ),
       NotificationItem(
         id: 'n4',
-        title: 'Upcoming Appointment',
-        message: 'Reminder: You have a pickup appointment tomorrow at 10:30.',
+        title: 'แจ้งเตือนการนัดหมาย',
+        message: 'แจ้งเตือน: คุณมีนัดรับสินค้าในวันพรุ่งนี้ เวลา 10:30 น.',
         type: 'appointment',
         timestamp: DateTime.now().subtract(const Duration(days: 2)),
         isRead: true,
       ),
       NotificationItem(
         id: 'n5',
-        title: 'Price Alert',
-        message: 'Gold price has dropped to your target of ฿40,000.',
+        title: 'แจ้งเตือนราคาทอง',
+        message: 'ราคาทองคำลดลงถึงระดับที่คุณตั้งเป้าหมายไว้ (฿40,000) แล้ว',
         type: 'price',
         timestamp: DateTime.now().subtract(const Duration(days: 4)),
         isRead: true,
@@ -534,7 +559,9 @@ class MockService {
     if (uid == null) return Stream.value([]);
 
     final userRefFuture = _getUserDocRef(uid);
-    final collectionFuture = userRefFuture.then((ref) => ref.collection('notifications'));
+    final collectionFuture = userRefFuture.then(
+      (ref) => ref.collection('notifications'),
+    );
 
     // Auto-generate if empty
     collectionFuture.then((collection) {
@@ -560,10 +587,9 @@ class MockService {
     final uid = currentUserId;
     if (uid == null) return;
     final userRef = await _getUserDocRef(uid);
-    await userRef
-        .collection('notifications')
-        .doc(notificationId)
-        .update({'isRead': true});
+    await userRef.collection('notifications').doc(notificationId).update({
+      'isRead': true,
+    });
   }
 
   Future<void> markAllNotificationsAsRead() async {
@@ -588,15 +614,14 @@ class MockService {
     if (uid == null) return;
 
     final userRef = await _getUserDocRef(uid);
-    await userRef
-        .collection('notifications')
-        .doc(notificationId)
-        .delete();
+    await userRef.collection('notifications').doc(notificationId).delete();
   }
 
   // Self-healing data repair for products (costBasis recovery)
   Future<void> repairProductsData() async {
-    final productsSnap = await FirebaseFirestore.instance.collection('products').get();
+    final productsSnap = await FirebaseFirestore.instance
+        .collection('products')
+        .get();
     final batch = FirebaseFirestore.instance.batch();
     bool neededRepair = false;
 
@@ -606,15 +631,15 @@ class MockService {
         double price = (data['price'] as num?)?.toDouble() ?? 0.0;
         double weight = (data['weight'] as num?)?.toDouble() ?? 0.0;
         double defaultCost;
-        
+
         if (weight > 0 && price == 0) {
-           // Probably a bar, use weight * ~40k
-           defaultCost = weight * 40000.0;
+          // Probably a bar, use weight * ~40k
+          defaultCost = weight * 40000.0;
         } else {
-           // Jewelry or other, use 90% of price
-           defaultCost = price * 0.9;
+          // Jewelry or other, use 90% of price
+          defaultCost = price * 0.9;
         }
-        
+
         batch.update(doc.reference, {'costBasis': defaultCost});
         neededRepair = true;
       }
@@ -664,16 +689,39 @@ class MockService {
     if (uid == null) throw Exception('User not logged in');
 
     String prefix = 'TXN'; // Default fallback
-    if (type == TransactionType.buy)
+    String typeLabel = 'ธุรกรรม';
+    if (type == TransactionType.buy) {
       prefix = 'BUY';
-    else if (type == TransactionType.sell)
+      typeLabel = 'ซื้อ';
+    } else if (type == TransactionType.sell) {
       prefix = 'SEL';
-    else if (type == TransactionType.pawn)
+      typeLabel = 'ขายคืน';
+    } else if (type == TransactionType.pawn) {
       prefix = 'PWN';
-    else if (type == TransactionType.redeem)
+      typeLabel = 'จำนำ';
+    } else if (type == TransactionType.redeem) {
       prefix = 'RED';
+      typeLabel = 'ไถ่ถอน';
+    } else if (type == TransactionType.savings_deposit) {
+      typeLabel = 'ออมทอง (ฝาก)';
+    } else if (type == TransactionType.savings_withdraw) {
+      typeLabel = 'ออมทอง (ถอน)';
+    }
 
-    final id = await _idGeneratorService.generateId('transactions', prefixOverride: prefix);
+    // Generate sequential ID for naming convention
+    final id = await _idGeneratorService.generateId(
+      'transactions',
+      prefixOverride: prefix,
+    );
+    String displayName = 'Unknown User';
+    try {
+      final userProfile = await getUserProfile();
+      if (userProfile['firstName'] != null && userProfile['lastName'] != null) {
+        displayName = '${userProfile['firstName']} ${userProfile['lastName']}';
+      }
+    } catch (e) {
+      print('DEBUG: Profile retrieval failed for transaction record: $e');
+    }
 
     try {
       await FirebaseFirestore.instance.runTransaction((transaction) async {
@@ -681,9 +729,15 @@ class MockService {
         final rateDoc = await transaction.get(
           FirebaseFirestore.instance.collection('market').doc('gold_rate'),
         );
-        final sellRate = (rateDoc.data() as Map<String, dynamic>?)?['sellPrice']?.toDouble() ?? 42000.0;
-        final buyRate = (rateDoc.data() as Map<String, dynamic>?)?['buyPrice']?.toDouble() ?? 41000.0;
-        
+        final sellRate =
+            (rateDoc.data() as Map<String, dynamic>?)?['sellPrice']
+                ?.toDouble() ??
+            42000.0;
+        final buyRate =
+            (rateDoc.data() as Map<String, dynamic>?)?['buyPrice']
+                ?.toDouble() ??
+            41000.0;
+
         double totalCost = 0.0;
         double calculatedProfit = 0.0;
 
@@ -718,11 +772,11 @@ class MockService {
             );
             // If product doesn't exist, we just skip stock deduction rather than failing (for demo resilience)
             if (productDoc.exists) {
-               if ((productDoc.data() as Map<String, dynamic>)['stock'] <= 0) {
-                 throw Exception('Product is out of stock.');
-               }
+              if ((productDoc.data() as Map<String, dynamic>)['stock'] <= 0) {
+                throw Exception('Product is out of stock.');
+              }
             } else {
-               productDoc = null; // Reset to null so we don't try to update it
+              productDoc = null; // Reset to null so we don't try to update it
             }
           }
 
@@ -759,9 +813,7 @@ class MockService {
         } else if (type == TransactionType.pawn) {
           // 4. Create Asset in Portfolio for Pawn
           final userRef = await _getUserDocRef(uid);
-          final assetRef = userRef
-              .collection('assets')
-              .doc('a$id');
+          final assetRef = userRef.collection('assets').doc('a$id');
 
           final assetDoc = {
             'name': assetName,
@@ -772,7 +824,9 @@ class MockService {
             'status': 'pawned',
             'loanAmount': amount,
             'pawnDate': FieldValue.serverTimestamp(),
-            'dueDate': Timestamp.fromDate(DateTime.now().add(const Duration(days: 30))),
+            'dueDate': Timestamp.fromDate(
+              DateTime.now().add(const Duration(days: 30)),
+            ),
             'purity': purity,
             'interestRate': 0.0125, // 1.25% monthly
           };
@@ -785,14 +839,17 @@ class MockService {
           'type': type.name,
           'amount': amount,
           'weight': weight,
+          'category': category ?? 'General',
           'timestamp': FieldValue.serverTimestamp(),
-          'details': '${type.name.toUpperCase()}: $assetName ($weight Baht x$quantity)',
+          'details': '$typeLabel: $assetName ($weight บาท x$quantity)',
           'cost': totalCost,
           'profit': calculatedProfit,
           'purity': purity,
           'laborFee': laborFee,
           'userId': uid,
-          'userEmail': FirebaseAuth.instance.currentUser?.email ?? 'Unknown Email',
+          'userEmail':
+              FirebaseAuth.instance.currentUser?.email ?? 'Unknown Email',
+          'userDisplayName': displayName,
         };
         final globalTxRef = FirebaseFirestore.instance
             .collection('transactions')
@@ -802,9 +859,7 @@ class MockService {
         // 7. Add Notification
         final notifId = DateTime.now().millisecondsSinceEpoch.toString();
         final userRef = await _getUserDocRef(uid);
-        final notifRef = userRef
-            .collection('notifications')
-            .doc('n_$notifId');
+        final notifRef = userRef.collection('notifications').doc('n_$notifId');
         final formatter = NumberFormat('#,##0.00');
         final notif = NotificationItem(
           id: notifId,
@@ -832,24 +887,35 @@ class MockService {
     final uid = currentUserId;
     if (uid == null) throw Exception('User not logged in');
 
-    final id = await _idGeneratorService.generateId('transactions', prefixOverride: 'RSK');
+    final id = await _idGeneratorService.generateId(
+      'transactions',
+      prefixOverride: 'RSK',
+    );
 
     try {
       await FirebaseFirestore.instance.runTransaction((transaction) async {
-        final productRef = FirebaseFirestore.instance.collection('products').doc(productId);
+        final productRef = FirebaseFirestore.instance
+            .collection('products')
+            .doc(productId);
         final productDoc = await transaction.get(productRef);
-        
+
         if (!productDoc.exists) throw Exception('Product not found');
 
         // 1. Get current stock and cost basis for weighted average
-        final currentStock = (productDoc.data() as Map<String, dynamic>)['stock'] ?? 0;
-        final currentCostBasis = (productDoc.data() as Map<String, dynamic>)['costBasis']?.toDouble() ?? 0.0;
-        
+        final currentStock =
+            (productDoc.data() as Map<String, dynamic>)['stock'] ?? 0;
+        final currentCostBasis =
+            (productDoc.data() as Map<String, dynamic>)['costBasis']
+                ?.toDouble() ??
+            0.0;
+
         // 2. Calculate New Weighted Average Cost
         // Formula: ((ExistingStock * OldCost) + (NewQty * NewCost)) / NewTotalStock
         final newTotalStock = currentStock + quantity;
         final unitCost = totalCost / quantity;
-        final newCostBasis = ((currentStock * currentCostBasis) + (quantity * unitCost)) / newTotalStock;
+        final newCostBasis =
+            ((currentStock * currentCostBasis) + (quantity * unitCost)) /
+            newTotalStock;
 
         // 3. Update stock and cost basis
         transaction.update(productRef, {
@@ -869,7 +935,8 @@ class MockService {
           'quantity': quantity,
           'productId': productId,
           'timestamp': FieldValue.serverTimestamp(),
-          'details': 'RESTOCK: $productName ($quantity units @ ฿${unitCost.toStringAsFixed(0)})',
+          'details':
+              'RESTOCK: $productName ($quantity units @ ฿${unitCost.toStringAsFixed(0)})',
           'userId': uid,
           'userEmail': FirebaseAuth.instance.currentUser?.email ?? 'Owner',
         };
@@ -900,9 +967,7 @@ class MockService {
 
         // 1. Get asset ref to delete
         final userRef = await _getUserDocRef(uid);
-        final assetRef = userRef
-            .collection('assets')
-            .doc(asset.id);
+        final assetRef = userRef.collection('assets').doc(asset.id);
 
         // Check if asset exists first
         final assetDoc = await transaction.get(assetRef);
@@ -921,22 +986,39 @@ class MockService {
         transaction.delete(assetRef);
 
         // 4. Create the Sell Transaction record (Root)
-        final id = await _idGeneratorService.generateId('transactions', prefixOverride: 'SEL');
- 
+        final id = await _idGeneratorService.generateId(
+          'transactions',
+          prefixOverride: 'SEL',
+        );
+        String displayName = 'Unknown User';
+        try {
+          final userProfile = await getUserProfile();
+          if (userProfile['firstName'] != null &&
+              userProfile['lastName'] != null) {
+            displayName =
+                '${userProfile['firstName']} ${userProfile['lastName']}';
+          }
+        } catch (e) {
+          print('DEBUG: Profile retrieval failed for transaction record: $e');
+        }
+
         final transactionDoc = {
           'assetId': asset.id,
           'type': TransactionType.sell.name,
           'amount': sellPrice,
           'weight': asset.weight,
+          'category': asset.category,
           'timestamp': FieldValue.serverTimestamp(),
           'details': 'SELL: ${asset.name} (${asset.weight} Baht)',
           'cost': sellPrice, // Store's outflow is the cost
-          'profit': 0.0,     // Realized later
+          'profit': 0.0, // Realized later
           'purity': asset.purity,
           'userId': uid,
-          'userEmail': FirebaseAuth.instance.currentUser?.email ?? 'Unknown Email',
+          'userEmail':
+              FirebaseAuth.instance.currentUser?.email ?? 'Unknown Email',
+          'userDisplayName': displayName,
         };
- 
+
         final globalTxRef = FirebaseFirestore.instance
             .collection('transactions')
             .doc('t$id');
@@ -981,9 +1063,7 @@ class MockService {
 
         // 1. Get asset ref to verify and update
         final userRef = await _getUserDocRef(uid);
-        final assetRef = userRef
-            .collection('assets')
-            .doc(asset.id);
+        final assetRef = userRef.collection('assets').doc(asset.id);
 
         final assetDoc = await transaction.get(assetRef);
         if (!assetDoc.exists) throw Exception('Asset not found in portfolio.');
@@ -1014,24 +1094,40 @@ class MockService {
         });
 
         // 4. Create Pawn Transaction (Root)
-        final id = await _idGeneratorService.generateId('transactions', prefixOverride: 'PWN');
- 
+        final id = await _idGeneratorService.generateId(
+          'transactions',
+          prefixOverride: 'PWN',
+        );
+        String displayName = 'Unknown User';
+        try {
+          final userProfile = await getUserProfile();
+          if (userProfile['firstName'] != null &&
+              userProfile['lastName'] != null) {
+            displayName =
+                '${userProfile['firstName']} ${userProfile['lastName']}';
+          }
+        } catch (e) {
+          print('DEBUG: Profile retrieval failed for transaction record: $e');
+        }
+
         final transactionDoc = {
           'assetId': asset.id,
           'type': TransactionType.pawn.name,
           'amount': loanAmount,
           'weight': asset.weight,
+          'category': asset.category,
           'timestamp': FieldValue.serverTimestamp(),
           'details': 'PAWN: ${asset.name} (${asset.weight} Baht)',
           'userId': uid,
           'userEmail':
               FirebaseAuth.instance.currentUser?.email ?? 'Unknown Email',
+          'userDisplayName': displayName,
         };
- 
+
         final globalTxRef = FirebaseFirestore.instance
             .collection('transactions')
             .doc('t$id');
- 
+
         transaction.set(globalTxRef, transactionDoc);
 
         // 5. Add a notification
@@ -1074,9 +1170,7 @@ class MockService {
 
         // Verify Asset exists and is pawned
         final userRef = await _getUserDocRef(uid);
-        final assetRef = userRef
-            .collection('assets')
-            .doc(asset.id);
+        final assetRef = userRef.collection('assets').doc(asset.id);
 
         final assetDoc = await transaction.get(assetRef);
         if (!assetDoc.exists) throw Exception('Asset not found in portfolio.');
@@ -1102,9 +1196,26 @@ class MockService {
         });
 
         // 4. Create Redeem Transaction (Root)
-        final id = await _idGeneratorService.generateId('transactions', prefixOverride: 'RED');
- 
-        final principal = (assetDoc.data() as Map<String, dynamic>)['loanAmount']?.toDouble() ?? 0.0;
+        final id = await _idGeneratorService.generateId(
+          'transactions',
+          prefixOverride: 'RED',
+        );
+        String displayName = 'Unknown User';
+        try {
+          final userProfile = await getUserProfile();
+          if (userProfile['firstName'] != null &&
+              userProfile['lastName'] != null) {
+            displayName =
+                '${userProfile['firstName']} ${userProfile['lastName']}';
+          }
+        } catch (e) {
+          print('DEBUG: Profile retrieval failed for transaction record: $e');
+        }
+
+        final principal =
+            (assetDoc.data() as Map<String, dynamic>)['loanAmount']
+                ?.toDouble() ??
+            0.0;
         final interestPaid = totalOwed - principal;
 
         final transactionDoc = {
@@ -1114,20 +1225,21 @@ class MockService {
           'principal': principal,
           'interestPaid': interestPaid,
           'profit': interestPaid, // Redemption profit is the interest
-          'cost': 0.0,            // No additional cost to store upon redemption
+          'cost': 0.0, // No additional cost to store upon redemption
           'purity': asset.purity,
           'weight': asset.weight,
+          'category': asset.category,
           'timestamp': FieldValue.serverTimestamp(),
           'details': 'REDEEM: ${asset.name} (${asset.weight} Baht)',
-          'userId': uid,
           'userEmail':
               FirebaseAuth.instance.currentUser?.email ?? 'Unknown Email',
+          'userDisplayName': displayName,
         };
- 
+
         final globalTxRef = FirebaseFirestore.instance
             .collection('transactions')
             .doc('t$id');
- 
+
         transaction.set(globalTxRef, transactionDoc);
 
         // 5. Add a notification
@@ -1286,8 +1398,9 @@ class MockService {
     // Use transactional update for data integrity
     await FirebaseFirestore.instance.runTransaction((transaction) async {
       // 1. Create Appointment document
-      final aptRef =
-          FirebaseFirestore.instance.collection('appointments').doc(aptId);
+      final aptRef = FirebaseFirestore.instance
+          .collection('appointments')
+          .doc(aptId);
       transaction.set(aptRef, appointment.toMap());
 
       // 2. Update Asset Status to 'pickup_scheduled'
@@ -1352,8 +1465,9 @@ class MockService {
 
     await FirebaseFirestore.instance.runTransaction((transaction) async {
       // 1. Update Appointment Status
-      final aptRef =
-          FirebaseFirestore.instance.collection('appointments').doc(appointmentId);
+      final aptRef = FirebaseFirestore.instance
+          .collection('appointments')
+          .doc(appointmentId);
       transaction.update(aptRef, {'status': 'completed'});
 
       // 2. Update Asset Status to 'collected'
@@ -1366,7 +1480,8 @@ class MockService {
       final notif = NotificationItem(
         id: notifId,
         title: 'Pickup Successful',
-        message: 'You have successfully picked up your $assetName from the store.',
+        message:
+            'You have successfully picked up your $assetName from the store.',
         type: 'appointment',
         timestamp: DateTime.now(),
         isRead: false,
@@ -1501,7 +1616,8 @@ class MockService {
         'laborFee': 0.0,
         'costBasis': 38000.0,
         'stock': 30,
-        'imageUrl': 'https://via.placeholder.com/150x150/FFD700/000000?text=Bar+1',
+        'imageUrl':
+            'https://via.placeholder.com/150x150/FFD700/000000?text=Bar+1',
         'category': 'Gold Bar',
       },
       {
@@ -1512,7 +1628,8 @@ class MockService {
         'laborFee': 0.0,
         'costBasis': 76000.0,
         'stock': 20,
-        'imageUrl': 'https://via.placeholder.com/150x150/FFD700/000000?text=Bar+2',
+        'imageUrl':
+            'https://via.placeholder.com/150x150/FFD700/000000?text=Bar+2',
         'category': 'Gold Bar',
       },
       {
@@ -1523,7 +1640,8 @@ class MockService {
         'laborFee': 0.0,
         'costBasis': 190000.0,
         'stock': 10,
-        'imageUrl': 'https://via.placeholder.com/150x150/FFD700/000000?text=Bar+5',
+        'imageUrl':
+            'https://via.placeholder.com/150x150/FFD700/000000?text=Bar+5',
         'category': 'Gold Bar',
       },
       {
@@ -1542,14 +1660,9 @@ class MockService {
 
     for (var prod in dummyProducts) {
       final productId = await _idGeneratorService.generateId('products');
-      await productsRef.doc(productId).set({
-        ...prod,
-        'id': productId,
-      });
+      await productsRef.doc(productId).set({...prod, 'id': productId});
     }
   }
-
-
 
   // Search and Filter helper (to be used locally on the streamed list)
   List<Product> filterProducts(List<Product> allProducts, String query) {
@@ -1580,20 +1693,18 @@ class MockService {
     final userRefFuture = _getUserDocRef(uid);
 
     return Stream.fromFuture(userRefFuture).asyncExpand((userRef) {
-      return userRef
-          .collection('savings')
-          .doc('account')
-          .snapshots()
-          .map((snapshot) {
-            if (!snapshot.exists || snapshot.data() == null) {
-              return GoldSavingsAccount(
-                totalWeightSaved: 0.0,
-                totalAmountInvested: 0.0,
-                lastUpdated: DateTime.now(),
-              );
-            }
-            return GoldSavingsAccount.fromMap(snapshot.data()!);
-          });
+      return userRef.collection('savings').doc('account').snapshots().map((
+        snapshot,
+      ) {
+        if (!snapshot.exists || snapshot.data() == null) {
+          return GoldSavingsAccount(
+            totalWeightSaved: 0.0,
+            totalAmountInvested: 0.0,
+            lastUpdated: DateTime.now(),
+          );
+        }
+        return GoldSavingsAccount.fromMap(snapshot.data()!);
+      });
     });
   }
 
@@ -1612,7 +1723,9 @@ class MockService {
           .snapshots()
           .map((snapshot) {
             return snapshot.docs
-                .map((doc) => GoldSavingsTransaction.fromMap(doc.id, doc.data()))
+                .map(
+                  (doc) => GoldSavingsTransaction.fromMap(doc.id, doc.data()),
+                )
                 .toList();
           });
     });
@@ -1650,7 +1763,7 @@ class MockService {
       // 3. Update the aggregate savings account
       final savingsRef = userRef.collection('savings').doc('account');
       final weightGained = amountInTHB / currentBuyPricePerBaht;
-      
+
       transaction.set(savingsRef, {
         'totalWeightSaved': FieldValue.increment(weightGained),
         'totalAmountInvested': FieldValue.increment(amountInTHB),
@@ -1671,20 +1784,39 @@ class MockService {
 
       // 5. Add global transaction record
       final formatter = NumberFormat('#,##0.00');
+      final id = await _idGeneratorService.generateId(
+        'transactions',
+        prefixOverride: 'SAV',
+      );
+      String displayName = 'Unknown User';
+      try {
+        final userProfile = await getUserProfile();
+        if (userProfile['firstName'] != null &&
+            userProfile['lastName'] != null) {
+          displayName =
+              '${userProfile['firstName']} ${userProfile['lastName']}';
+        }
+      } catch (e) {
+        print('DEBUG: Profile retrieval failed for transaction record: $e');
+      }
+
       final globalTxDoc = {
         'assetId': 'savings',
         'type': TransactionType.savings_deposit.name,
         'amount': amountInTHB,
         'weight': weightGained,
+        'category': 'Savings',
         'timestamp': FieldValue.serverTimestamp(),
         'details': 'SAVINGS: Deposited ฿${formatter.format(amountInTHB)}',
         'userId': uid,
-        'userEmail': FirebaseAuth.instance.currentUser?.email ?? 'Unknown Email',
+        'userEmail':
+            FirebaseAuth.instance.currentUser?.email ?? 'Unknown Email',
+        'userDisplayName': displayName,
       };
-      
+
       final globalTransactionsRef = FirebaseFirestore.instance
           .collection('transactions')
-          .doc('t$txId');
+          .doc('t$id');
       transaction.set(globalTransactionsRef, globalTxDoc);
 
       // 6. Add a notification
@@ -1726,7 +1858,10 @@ class MockService {
       // 2. Check if user has enough saved gold weight
       final savingsRef = userRef.collection('savings').doc('account');
       final savingsDoc = await transaction.get(savingsRef);
-      final currentWeight = ((savingsDoc.data() as Map<String, dynamic>?)?['totalWeightSaved'] ?? 0.0 as num).toDouble();
+      final currentWeight =
+          ((savingsDoc.data() as Map<String, dynamic>?)?['totalWeightSaved'] ??
+                  0.0 as num)
+              .toDouble();
 
       if (currentWeight < weightToSell) {
         throw Exception('Insufficient gold weight in your savings.');
@@ -1744,7 +1879,11 @@ class MockService {
 
       // 4. Update the aggregate savings account
       double proportionSold = weightToSell / currentWeight;
-      double currentInvested = ((savingsDoc.data() as Map<String, dynamic>?)?['totalAmountInvested'] ?? 0.0 as num).toDouble();
+      double currentInvested =
+          ((savingsDoc.data()
+                      as Map<String, dynamic>?)?['totalAmountInvested'] ??
+                  0.0 as num)
+              .toDouble();
       double investedToDeduct = proportionSold * currentInvested;
 
       transaction.set(savingsRef, {
@@ -1767,20 +1906,39 @@ class MockService {
 
       // 6. Add global transaction record
       final formatter = NumberFormat('#,##0.00');
+      final id = await _idGeneratorService.generateId(
+        'transactions',
+        prefixOverride: 'SAV',
+      );
+      String displayName = 'Unknown User';
+      try {
+        final userProfile = await getUserProfile();
+        if (userProfile['firstName'] != null &&
+            userProfile['lastName'] != null) {
+          displayName =
+              '${userProfile['firstName']} ${userProfile['lastName']}';
+        }
+      } catch (e) {
+        print('DEBUG: Profile retrieval failed for transaction record: $e');
+      }
+
       final globalTxDoc = {
         'assetId': 'savings',
         'type': TransactionType.savings_withdraw.name,
         'amount': amountInTHB.abs(),
         'weight': weightToSell,
+        'category': 'Savings',
         'timestamp': FieldValue.serverTimestamp(),
         'details': 'SAVINGS: Sold ${weightToSell.toStringAsFixed(4)} Baht',
         'userId': uid,
-        'userEmail': FirebaseAuth.instance.currentUser?.email ?? 'Unknown Email',
+        'userEmail':
+            FirebaseAuth.instance.currentUser?.email ?? 'Unknown Email',
+        'userDisplayName': displayName,
       };
-      
+
       final globalTransactionsRef = FirebaseFirestore.instance
           .collection('transactions')
-          .doc('t$txId');
+          .doc('t$id');
       transaction.set(globalTransactionsRef, globalTxDoc);
 
       // 7. Add a notification
@@ -1817,19 +1975,20 @@ class MockService {
         final data = txDoc.data();
         final uid = data['userId'];
         final txId = txDoc.id.replaceAll(RegExp(r'[^0-9]'), '');
-        
+
         if (uid == null) continue;
 
         final userRef = await _getUserDocRef(uid);
-        final assetRef = userRef
-            .collection('assets')
-            .doc('a$txId');
+        final assetRef = userRef.collection('assets').doc('a$txId');
 
         final assetDoc = await assetRef.get();
         if (!assetDoc.exists) {
-          final timestamp = (data['timestamp'] as Timestamp?) ?? Timestamp.now();
+          final timestamp =
+              (data['timestamp'] as Timestamp?) ?? Timestamp.now();
           batch.set(assetRef, {
-            'name': data['details']?.toString().split(':').last.trim() ?? 'Pawned Item',
+            'name':
+                data['details']?.toString().split(':').last.trim() ??
+                'Pawned Item',
             'weight': (data['weight'] as num?)?.toDouble() ?? 1.0,
             'category': 'General',
             'acquisitionDate': timestamp,
@@ -1837,7 +1996,9 @@ class MockService {
             'status': 'pawned',
             'loanAmount': (data['amount'] as num?)?.toDouble() ?? 0.0,
             'pawnDate': timestamp,
-            'dueDate': Timestamp.fromDate(timestamp.toDate().add(const Duration(days: 30))),
+            'dueDate': Timestamp.fromDate(
+              timestamp.toDate().add(const Duration(days: 30)),
+            ),
           });
         }
       }
@@ -1849,8 +2010,12 @@ class MockService {
   }
 
   Future<void> repairAllTransactions() async {
-    final rateDoc = await FirebaseFirestore.instance.collection('market').doc('gold_rate').get();
-    final buyRate = (rateDoc.data()?['buyPrice'] as num?)?.toDouble() ?? 41000.0;
+    final rateDoc = await FirebaseFirestore.instance
+        .collection('market')
+        .doc('gold_rate')
+        .get();
+    final buyRate =
+        (rateDoc.data()?['buyPrice'] as num?)?.toDouble() ?? 41000.0;
 
     final buyTxQuery = await FirebaseFirestore.instance
         .collection('transactions')
@@ -1865,16 +2030,19 @@ class MockService {
       final amount = (data['amount'] as num?)?.toDouble() ?? 0.0;
       final cost = (data['cost'] as num?)?.toDouble();
       final profit = (data['profit'] as num?)?.toDouble();
-      
+
       // If data is missing or mathematically inconsistent (Cost + Profit != Amount)
-      if (cost == null || profit == null || (amount - (cost + profit)).abs() > 1.0) {
+      if (cost == null ||
+          profit == null ||
+          (amount - (cost + profit)).abs() > 1.0) {
         double weight = (data['weight'] as num?)?.toDouble() ?? 0.0;
-        
+
         // If weight is missing, estimate it from amount using market rate (reversed)
         if (weight <= 0 && amount > 0) {
-          weight = amount / (buyRate * 1.04); // Estimate weight assuming 4% margin
+          weight =
+              amount / (buyRate * 1.04); // Estimate weight assuming 4% margin
         }
-        
+
         final newCost = weight * buyRate;
         final newProfit = amount - newCost;
 
@@ -1904,13 +2072,13 @@ class MockService {
       if (data['profit'] == null || data['interestPaid'] == null) {
         final amount = (data['amount'] as num?)?.toDouble() ?? 0.0;
         final assetId = data['assetId'] as String?;
-        
+
         double principal = (data['principal'] as num?)?.toDouble() ?? 0.0;
-        
+
         // If principal is missing, we try to estimate it as 98% of redemption (very rough)
         // Better: ignore if we can't find the source asset, but let's at least set profit
         if (principal <= 0) {
-          principal = amount * 0.98; 
+          principal = amount * 0.98;
         }
 
         final interestPaid = amount - principal;

@@ -36,19 +36,13 @@ class GoldRateCard extends StatelessWidget {
                mainAxisAlignment: MainAxisAlignment.center,
                children: [
                  const Text(
-                   'Today\'s Gold Rate (96.5%)',
+                   'ราคาทองวันนี้ (96.5%)',
                    style: TextStyle(
                      color: Color(0xFFFFD700), 
                      fontSize: 22, 
                      fontWeight: FontWeight.bold,
                      fontFamily: 'Courier', // Monospace for digital look
                    ),
-                 ),
-                 const SizedBox(width: 8),
-                 Icon(
-                    rate.trend == 'up' ? Icons.arrow_upward : Icons.arrow_downward,
-                    color: rate.trend == 'up' ? Colors.greenAccent : Colors.redAccent,
-                    size: 28,
                  ),
                ],
              ),
@@ -57,15 +51,15 @@ class GoldRateCard extends StatelessWidget {
           // Prices
           Row(
             children: [
-               Expanded(child: _buildPriceColumn('We Buy', rate.buyPrice)),
+               Expanded(child: _buildPriceColumn('ราคารับซื้อ', rate.buyPrice)),
                Container(width: 2, height: 60, color: const Color(0xFFFFD700)),
-               Expanded(child: _buildPriceColumn('We Sell', rate.sellPrice)),
+               Expanded(child: _buildPriceColumn('ราคาขายออก', rate.sellPrice)),
             ],
           ),
           
           const SizedBox(height: 12),
           Text(
-            'Updated: ${rate.updateTime}',
+            'อัปเดตล่าสุด: ${DateFormat('HH:mm').format(rate.timestamp)} น.',
             style: const TextStyle(color: Color(0xFFFFE0B2), fontSize: 14),
           ),
           const SizedBox(height: 4),
